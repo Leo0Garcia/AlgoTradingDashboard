@@ -1,43 +1,74 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Badge } from "@/components/ui/badge";
-import { Moon, Sun } from "lucide-react";
 import type { SessionState } from "@/lib/types";
 
 const SESSION_LABELS: Record<string, string> = {
-  london: "London",
+  london: "LONDON",
   ny: "NY",
   newyork: "NY",
-  ny_open: "NY open",
-  ny_close: "NY close",
-  asia: "Asia",
-  tokyo: "Tokyo",
-  outside: "Outside session",
+  ny_open: "NY OPEN",
+  ny_close: "NY CLOSE",
+  asia: "ASIA",
+  tokyo: "TOKYO",
+  outside: "OUTSIDE",
 };
 
 function labelFor(name: string | undefined | null): string {
   if (!name) return "—";
-  return SESSION_LABELS[name.toLowerCase()] ?? prettyCase(name);
-}
-
-function prettyCase(s: string): string {
-  return s
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+  return SESSION_LABELS[name.toLowerCase()] ?? name.toUpperCase().replace(/_/g, " ");
 }
 
 function fmtDuration(ms: number): string {
-  if (ms <= 0) return "now";
+  if (ms <= 0) return "NOW";
   const sec = Math.floor(ms / 1000);
   const h = Math.floor(sec / 3600);
   const m = Math.floor((sec % 3600) / 60);
   const s = sec % 60;
-  if (h > 0) return `${h}h ${m}m`;
-  if (m > 0) return `${m}m ${s}s`;
-  return `${s}s`;
+  if (h > 0) return `${h}H ${m}M`;
+  if (m > 0) return `${m}M ${s}S`;
+  return `${s}S`;
 }
 
+function useCountdown(unixSeconds: number | null | undefined, run: boolean): number | null {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!run) return;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [run]);
+  if (!unixSeconds) return null;
+  return unixSeconds * 1000 - now;
+}
+
+/** Inline session badge used in the algo status row. ☼ LONDON / ☾ OUTSIDE. */
+export function SessionInline({ session }: { session: SessionState | null }) {
+  const remaining = useCountdown(
+    session?.next_window_start_unix,
+    !!session && !session.active,
+  );
+  if (!session) return null;
+  if (session.active) {
+    return (
+      <span className="text-green text-[10px] tracking-[0.06em]">
+        ☼ {labelFor(session.name)}
+      </span>
+    );
+  }
+  const nextLabel = labelFor(session.next_window_name ?? null);
+  return (
+    <span className="inline-flex items-center gap-2">
+      <span className="text-amber text-[10px] tracking-[0.06em]">☾ OUTSIDE</span>
+      {remaining !== null ? (
+        <span className="text-dim text-[10px]">
+          {nextLabel !== "—" ? `${nextLabel} ` : ""}IN {fmtDuration(remaining)}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+/** Tiny compact badge for table cells. */
 export function SessionBadge({
   session,
   compact = false,
@@ -45,51 +76,8 @@ export function SessionBadge({
   session: SessionState | null;
   compact?: boolean;
 }) {
-  const [now, setNow] = useState(() => Date.now());
-
-  useEffect(() => {
-    if (session?.active) return;
-    if (!session?.next_window_start_unix) return;
-    const t = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(t);
-  }, [session?.active, session?.next_window_start_unix]);
-
-  if (!session) {
-    return compact ? null : (
-      <Badge variant="muted">No session data</Badge>
-    );
-  }
-
-  if (session.active) {
-    return (
-      <Badge variant="green">
-        <Sun className="h-3 w-3" />
-        {labelFor(session.name)} session
-      </Badge>
-    );
-  }
-
-  const next = session.next_window_start_unix
-    ? session.next_window_start_unix * 1000
-    : null;
-  const remaining = next ? next - now : null;
-  const nextLabel = labelFor(session.next_window_name ?? null);
-  const nextStr =
-    next && remaining !== null
-      ? `${nextLabel === "—" ? "next session" : `${nextLabel} open`} in ${fmtDuration(remaining)}`
-      : null;
-
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      <Badge variant="amber">
-        <Moon className="h-3 w-3" />
-        Outside session
-      </Badge>
-      {!compact && nextStr ? (
-        <span className="text-[10px] text-zinc-500 num">{nextStr}</span>
-      ) : null}
-    </span>
-  );
+  void compact;
+  return <SessionInline session={session} />;
 }
 
 export function SessionBanner({
@@ -99,47 +87,42 @@ export function SessionBanner({
   algoName: string;
   session: SessionState | null;
 }) {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    if (session?.active || !session?.next_window_start_unix) return;
-    const t = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(t);
-  }, [session?.active, session?.next_window_start_unix]);
-
+  const remaining = useCountdown(
+    session?.next_window_start_unix,
+    !!session && !session.active,
+  );
   if (!session || session.active) return null;
   const next = session.next_window_start_unix
     ? session.next_window_start_unix * 1000
     : null;
   const nextLabel = labelFor(session.next_window_name ?? null);
-  const remaining = next ? next - now : null;
 
   return (
-    <div className="rounded-md border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-100/80 flex items-center gap-2">
-      <Moon className="h-3.5 w-3.5 text-amber-400 shrink-0" />
-      <div className="leading-relaxed">
-        <span className="text-zinc-200 font-medium">{algoName}</span> is paused — outside trading
-        session.{" "}
+    <div className="bg-bg-el border-l-[3px] border-l-amber px-[18px] py-2.5 flex items-center gap-3 text-[11px]">
+      <span className="text-amber text-[12px]">☾</span>
+      <div className="leading-relaxed text-text">
+        <span className="text-bright">{algoName.toUpperCase()}</span> PAUSED —
+        OUTSIDE TRADING SESSION
         {next ? (
           <>
-            Next:{" "}
-            <span className="text-zinc-200">
-              {nextLabel === "—" ? "session" : `${nextLabel} open`}
+            {" · "}NEXT:{" "}
+            <span className="text-bright">
+              {nextLabel !== "—" ? `${nextLabel} OPEN` : "SESSION"}
             </span>{" "}
-            at{" "}
-            <span className="num text-zinc-200">
-              {new Date(next).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            AT{" "}
+            <span className="text-bright">
+              {new Date(next).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
             </span>
             {remaining !== null ? (
               <>
-                {" "}
-                <span className="text-zinc-400">(in {fmtDuration(remaining)})</span>
+                {" "}<span className="text-dim">(IN {fmtDuration(remaining)})</span>
               </>
             ) : null}
-            .
           </>
-        ) : (
-          <>Next window unknown.</>
-        )}
+        ) : null}
       </div>
     </div>
   );

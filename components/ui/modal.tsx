@@ -25,19 +25,21 @@ export function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-sm p-4"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
         className={cn(
-          "w-full rounded-lg border border-zinc-800 bg-zinc-950 shadow-xl",
+          "w-full bg-bg-el border border-div shadow-[0_0_60px_rgba(0,0,0,0.6)]",
           size === "sm" ? "max-w-md" : "max-w-lg",
         )}
       >
-        <div className="px-4 py-3 border-b border-zinc-800 text-sm font-semibold text-zinc-100">
-          {title}
+        <div className="px-4 py-2.5 border-b border-div">
+          <span className="text-green text-[10px] tracking-[0.1em] uppercase">
+            ▸ {title}
+          </span>
         </div>
         <div className="p-4">{children}</div>
       </div>
@@ -67,7 +69,7 @@ export function ConfirmDialog({
   if (!open) return null;
   return (
     <Modal title={title} onClose={onCancel}>
-      <div className="text-sm text-zinc-300 leading-relaxed">{message}</div>
+      <div className="text-[12px] text-text leading-relaxed">{message}</div>
       <div className="flex justify-end gap-2 mt-4">
         <Button size="sm" variant="ghost" onClick={onCancel}>
           {cancelLabel}

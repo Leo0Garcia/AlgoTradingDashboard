@@ -1,23 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  Area,
-  AreaChart,
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
-import { Card, CardHeader } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
+import { SectionHeader } from "@/components/ui/section-header";
 import { Select } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { fmtR } from "@/lib/utils";
 import type { Alert } from "@/lib/types";
+import {
+  TerminalEquityCurve,
+  TerminalHBar,
+  TerminalRDist,
+  TerminalHourly,
+} from "@/components/charts/TerminalCharts";
 
 type Window = "today" | "7d" | "30d" | "all";
 
@@ -34,7 +28,6 @@ interface AlgoLite {
   id: string;
   name: string;
 }
-
 interface Point {
   ts: string;
   cumulative: number;
@@ -64,13 +57,17 @@ export function AnalyticsView() {
     if (since) sp.set("since", since);
     if (algoId) sp.set("algo", algoId);
     const [eq, al] = await Promise.all([
-      fetch(`/api/v1/equity?${sp.toString()}`, { cache: "no-store" }).then((r) => r.json()),
+      fetch(`/api/v1/equity?${sp.toString()}`, { cache: "no-store" }).then((r) =>
+        r.json(),
+      ),
       (async () => {
         const sp2 = new URLSearchParams();
         if (since) sp2.set("from", since);
         if (algoId) sp2.set("algo", algoId);
         sp2.set("limit", "2000");
-        const r = await fetch(`/api/v1/alerts?${sp2.toString()}`, { cache: "no-store" });
+        const r = await fetch(`/api/v1/alerts?${sp2.toString()}`, {
+          cache: "no-store",
+        });
         return r.json();
       })(),
     ]);
@@ -84,41 +81,45 @@ export function AnalyticsView() {
 
   const total = points.length ? points[points.length - 1].cumulative : 0;
 
-  const breakdownBy = (key: keyof Alert) => {
-    const m = new Map<string, { wins: number; losses: number; r: number; total: number }>();
+  const bySymbol = useMemo(() => {
+    const m = new Map<string, number>();
     for (const a of alerts) {
-      const k = String(a[key] ?? "—");
-      const e = m.get(k) ?? { wins: 0, losses: 0, r: 0, total: 0 };
-      e.total += 1;
-      if (["tp1", "tp2", "tp3", "be_after_tp1"].includes(a.status)) e.wins += 1;
-      if (a.status === "stopped") e.losses += 1;
-      e.r += a.r_outcome ?? 0;
-      m.set(k, e);
+      m.set(a.symbol, (m.get(a.symbol) ?? 0) + (a.r_outcome ?? 0));
     }
     return Array.from(m.entries())
-      .map(([name, v]) => ({ name, ...v }))
-      .sort((a, b) => b.r - a.r);
-  };
+      .map(([label, value]) => ({ label, value }))
+      .sort((a, b) => b.value - a.value);
+  }, [alerts]);
 
-  const bySymbol = useMemo(() => breakdownBy("symbol"), [alerts]);
-  const byGrade = useMemo(() => breakdownBy("grade"), [alerts]);
-  const byRecipe = useMemo(
-    () => breakdownBy("recipe" as keyof Alert).slice(0, 12),
+  const byGrade = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const a of alerts) {
+      m.set(a.grade, (m.get(a.grade) ?? 0) + (a.r_outcome ?? 0));
+    }
+    return ["A+", "A", "B"]
+      .filter((g) => m.has(g))
+      .map((label) => ({ label, value: m.get(label) ?? 0 }));
+  }, [alerts]);
+
+  const byRecipe = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const a of alerts) {
+      const k = (a.recipe ?? "—").toUpperCase();
+      m.set(k, (m.get(k) ?? 0) + (a.r_outcome ?? 0));
+    }
+    return Array.from(m.entries())
+      .map(([label, value]) => ({ label, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 12);
+  }, [alerts]);
+
+  const rValues = useMemo(
+    () =>
+      alerts
+        .map((a) => a.r_outcome)
+        .filter((v): v is number => v !== null && v !== undefined),
     [alerts],
   );
-
-  const rDist = useMemo(() => {
-    const bins = new Map<string, number>();
-    for (const a of alerts) {
-      if (a.r_outcome == null) continue;
-      const bucket = Math.floor(a.r_outcome * 2) / 2;
-      const key = bucket.toFixed(1);
-      bins.set(key, (bins.get(key) ?? 0) + 1);
-    }
-    return Array.from(bins.entries())
-      .map(([r, n]) => ({ r: Number(r), n }))
-      .sort((a, b) => a.r - b.r);
-  }, [alerts]);
 
   const byHour = useMemo(() => {
     const m = new Map<number, number>();
@@ -127,200 +128,74 @@ export function AnalyticsView() {
       const h = new Date(a.received_at).getHours();
       m.set(h, (m.get(h) ?? 0) + a.r_outcome);
     }
-    return Array.from({ length: 24 }, (_, h) => ({ h, r: m.get(h) ?? 0 }));
+    const out: { hour: number; r: number }[] = [];
+    for (let h = 9; h <= 16; h++) out.push({ hour: h, r: m.get(h) ?? 0 });
+    return out;
   }, [alerts]);
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2">
+    <div className="px-6 py-[18px] flex flex-col gap-3.5">
+      <div className="flex items-center gap-2.5">
         <Select value={w} onChange={(e) => setW(e.target.value as Window)}>
-          <option value="today">Today</option>
-          <option value="7d">Last 7 days</option>
-          <option value="30d">Last 30 days</option>
-          <option value="all">All time</option>
+          <option value="today">TODAY</option>
+          <option value="7d">LAST 7 DAYS</option>
+          <option value="30d">LAST 30 DAYS</option>
+          <option value="all">ALL TIME</option>
         </Select>
         <Select value={algoId} onChange={(e) => setAlgoId(e.target.value)}>
-          <option value="">All algorithms</option>
+          <option value="">ALL ALGORITHMS</option>
           {algos.map((a) => (
             <option key={a.id} value={a.id}>
-              {a.name}
+              {a.name.toUpperCase()}
             </option>
           ))}
         </Select>
-        <Badge variant={total >= 0 ? "green" : "red"} className="ml-auto">
-          Window Σ {fmtR(total)}
-        </Badge>
+        <span
+          className={`ml-auto font-semibold text-[13px] tracking-[0.04em] ${
+            total >= 0 ? "text-green" : "text-red"
+          }`}
+        >
+          WINDOW Σ {fmtR(total)}
+        </span>
       </div>
 
       <Card>
-        <CardHeader title="Cumulative equity" subtitle="Closed trades only" />
-        <div className="h-72 px-2">
-          {points.length === 0 ? (
-            <div className="flex h-full items-center justify-center text-sm text-zinc-500">
-              No closed trades in this window.
-            </div>
-          ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={points} margin={{ top: 16, right: 24, left: 0, bottom: 8 }}>
-                <CartesianGrid stroke="#27272a" strokeDasharray="3 3" />
-                <defs>
-                  <linearGradient id="eq2" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor={total >= 0 ? "#22c55e" : "#ef4444"} stopOpacity={0.4} />
-                    <stop offset="95%" stopColor={total >= 0 ? "#22c55e" : "#ef4444"} stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <XAxis
-                  dataKey="ts"
-                  tick={{ fill: "#71717a", fontSize: 10 }}
-                  tickFormatter={(t) => new Date(t).toLocaleDateString()}
-                  stroke="#27272a"
-                />
-                <YAxis
-                  tick={{ fill: "#71717a", fontSize: 10 }}
-                  stroke="#27272a"
-                  tickFormatter={(v) => `${v}R`}
-                  width={50}
-                />
-                <Tooltip
-                  contentStyle={{ background: "#18181b", border: "1px solid #27272a", fontSize: 12 }}
-                  labelFormatter={(l) => new Date(l).toLocaleString()}
-                  formatter={(v: unknown) => [`${Number(v).toFixed(2)}R`, "cum"]}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="cumulative"
-                  stroke={total >= 0 ? "#22c55e" : "#ef4444"}
-                  strokeWidth={1.8}
-                  fill="url(#eq2)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          )}
+        <SectionHeader title="Cumulative equity" right="Closed trades only" />
+        <div className="px-3 py-3 pb-1.5">
+          <TerminalEquityCurve
+            points={points}
+            height={180}
+            tickFormatter={(t) => new Date(t).toLocaleDateString()}
+          />
         </div>
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <BreakdownCard title="By symbol" rows={bySymbol} />
-        <BreakdownCard title="By grade" rows={byGrade} />
-        <BreakdownCard title="By recipe" rows={byRecipe} />
-
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
         <Card>
-          <CardHeader title="R-outcome distribution" />
-          <div className="h-60">
-            {rDist.length === 0 ? (
-              <Empty />
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={rDist} margin={{ top: 16, right: 16, left: 0, bottom: 8 }}>
-                  <CartesianGrid stroke="#27272a" strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="r"
-                    tick={{ fill: "#71717a", fontSize: 10 }}
-                    stroke="#27272a"
-                    tickFormatter={(v) => `${v}R`}
-                  />
-                  <YAxis tick={{ fill: "#71717a", fontSize: 10 }} stroke="#27272a" width={30} />
-                  <Tooltip
-                    contentStyle={{ background: "#18181b", border: "1px solid #27272a", fontSize: 12 }}
-                    formatter={(v, _n, c) => [`${v} trades`, `${(c as { payload: { r: number } }).payload.r}R`]}
-                  />
-                  <Bar dataKey="n">
-                    {rDist.map((d) => (
-                      <Cell key={d.r} fill={d.r >= 0 ? "#22c55e" : "#ef4444"} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            )}
+          <SectionHeader title="By symbol" />
+          <TerminalHBar data={bySymbol} />
+        </Card>
+        <Card>
+          <SectionHeader title="By grade" />
+          <TerminalHBar data={byGrade} />
+        </Card>
+        <Card>
+          <SectionHeader title="By recipe" />
+          <TerminalHBar data={byRecipe} />
+        </Card>
+        <Card>
+          <SectionHeader title="R-outcome distribution" />
+          <div className="px-3 py-3 pb-1.5">
+            <TerminalRDist values={rValues} />
           </div>
         </Card>
-
         <Card className="lg:col-span-2">
-          <CardHeader title="P&L by hour of day" subtitle="Sum of R per hour bucket" />
-          <div className="h-60">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={byHour} margin={{ top: 16, right: 16, left: 0, bottom: 8 }}>
-                <CartesianGrid stroke="#27272a" strokeDasharray="3 3" />
-                <XAxis dataKey="h" tick={{ fill: "#71717a", fontSize: 10 }} stroke="#27272a" />
-                <YAxis
-                  tick={{ fill: "#71717a", fontSize: 10 }}
-                  stroke="#27272a"
-                  tickFormatter={(v) => `${v}R`}
-                  width={50}
-                />
-                <Tooltip
-                  contentStyle={{ background: "#18181b", border: "1px solid #27272a", fontSize: 12 }}
-                  formatter={(v: unknown) => [`${Number(v).toFixed(2)}R`, "R"]}
-                  labelFormatter={(l) => `${l}:00`}
-                />
-                <Bar dataKey="r">
-                  {byHour.map((d) => (
-                    <Cell key={d.h} fill={d.r >= 0 ? "#22c55e" : "#ef4444"} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+          <SectionHeader title="P&L by hour of day" right="Sum of R per bucket" />
+          <div className="px-3 py-3 pb-1.5">
+            <TerminalHourly data={byHour} />
           </div>
         </Card>
       </div>
     </div>
-  );
-}
-
-function Empty() {
-  return (
-    <div className="flex h-full items-center justify-center text-sm text-zinc-500">
-      No data.
-    </div>
-  );
-}
-
-function BreakdownCard({
-  title,
-  rows,
-}: {
-  title: string;
-  rows: { name: string; wins: number; losses: number; r: number; total: number }[];
-}) {
-  return (
-    <Card>
-      <CardHeader title={title} />
-      <div className="max-h-72 overflow-auto">
-        {rows.length === 0 ? (
-          <div className="px-4 py-8 text-center text-sm text-zinc-500">No data</div>
-        ) : (
-          <table className="w-full text-xs">
-            <thead className="text-[10px] uppercase tracking-wider text-zinc-500">
-              <tr className="border-b border-zinc-800">
-                <th className="text-left px-3 py-2">Name</th>
-                <th className="text-right px-3 py-2">Trades</th>
-                <th className="text-right px-3 py-2">W / L</th>
-                <th className="text-right px-3 py-2">Σ R</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.name} className="border-b border-zinc-900">
-                  <td className="px-3 py-1.5 text-zinc-200 truncate max-w-[260px]">
-                    {r.name}
-                  </td>
-                  <td className="num px-3 py-1.5 text-right text-zinc-400">{r.total}</td>
-                  <td className="num px-3 py-1.5 text-right text-zinc-300">
-                    {r.wins}/{r.losses}
-                  </td>
-                  <td
-                    className={`num px-3 py-1.5 text-right ${
-                      r.r >= 0 ? "text-green-400" : "text-red-400"
-                    }`}
-                  >
-                    {fmtR(r.r)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-    </Card>
   );
 }

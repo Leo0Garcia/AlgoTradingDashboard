@@ -1,6 +1,11 @@
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
+import { SectionHeader } from "./section-header";
 
+/**
+ * Terminal Pro "panel". No border, no radius. The panel separates itself from
+ * the page background by being elevated to var(--bg-el).
+ */
 export function Card({
   className,
   children,
@@ -8,18 +13,10 @@ export function Card({
   className?: string;
   children: ReactNode;
 }) {
-  return (
-    <div
-      className={cn(
-        "rounded-lg border border-zinc-800 bg-zinc-950/40",
-        className,
-      )}
-    >
-      {children}
-    </div>
-  );
+  return <div className={cn("bg-bg-el", className)}>{children}</div>;
 }
 
+/** Backwards-compatible header shim using the new SectionHeader. */
 export function CardHeader({
   className,
   title,
@@ -31,22 +28,8 @@ export function CardHeader({
   subtitle?: ReactNode;
   right?: ReactNode;
 }) {
-  return (
-    <div
-      className={cn(
-        "flex items-start justify-between gap-2 border-b border-zinc-800 px-4 py-3",
-        className,
-      )}
-    >
-      <div className="min-w-0">
-        <div className="text-sm font-semibold text-zinc-100">{title}</div>
-        {subtitle ? (
-          <div className="text-xs text-zinc-500">{subtitle}</div>
-        ) : null}
-      </div>
-      {right}
-    </div>
-  );
+  const rightSlot = right ?? (subtitle ? subtitle : undefined);
+  return <SectionHeader title={title} right={rightSlot} className={className} />;
 }
 
 export function CardBody({
@@ -56,5 +39,5 @@ export function CardBody({
   className?: string;
   children: ReactNode;
 }) {
-  return <div className={cn("p-4", className)}>{children}</div>;
+  return <div className={cn("px-[18px] py-3", className)}>{children}</div>;
 }

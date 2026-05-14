@@ -1,27 +1,47 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useStream } from "@/hooks/useStream";
-import { Card, CardHeader, CardBody } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { SectionHeader } from "@/components/ui/section-header";
 import type { StreamEvent } from "@/lib/types";
+
+type EventTone = "alert" | "heartbeat" | "fill" | "exit" | "rejection" | "error";
 
 interface Row {
   id: string;
   ts: string;
   algo: string;
+  tone: EventTone;
   kind: string;
   detail: string;
-  tone: "muted" | "green" | "red" | "amber" | "blue";
+  bright?: boolean;
 }
 
-function nameFor(map: Record<string, string>, id: string): string {
-  return map[id] || id.slice(0, 10);
+const TONE_COLOR: Record<EventTone, string> = {
+  alert: "text-amber",
+  heartbeat: "text-dim",
+  fill: "text-blue",
+  exit: "text-green",
+  rejection: "text-amber",
+  error: "text-red",
+};
+
+function fmtTime(iso: string): string {
+  try {
+    const d = new Date(iso);
+    const p = (n: number) => String(n).padStart(2, "0");
+    return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+  } catch {
+    return iso;
+  }
 }
 
 function summarize(e: StreamEvent, algoName: string): Row | null {
-  const ts = new Date(e.received_at).toLocaleTimeString();
-  const payload = e.payload as Record<string, unknown>;
+  if (!e || !("algorithm_id" in e)) return null;
+  const ts = fmtTime(e.received_at);
+  const payload = (e.payload ?? {}) as Record<string, unknown>;
+
   if (e.kind === "heartbeat" || e.event_type === "heartbeat") {
     const symbols = (payload?.symbols as Record<string, { status: string }>) || {};
     const parts = Object.entries(symbols)
@@ -31,9 +51,9 @@ function summarize(e: StreamEvent, algoName: string): Row | null {
       id: `${e.algorithm_id}-${e.received_at}`,
       ts,
       algo: algoName,
-      kind: "Heartbeat",
+      tone: "heartbeat",
+      kind: "heartbeat",
       detail: parts || "tick",
-      tone: "muted",
     };
   }
   if (e.event_type === "alert") {
@@ -42,9 +62,10 @@ function summarize(e: StreamEvent, algoName: string): Row | null {
       id: `${e.algorithm_id}-${e.received_at}-alert`,
       ts,
       algo: algoName,
-      kind: "Alert",
+      tone: "alert",
+      kind: "alert",
       detail: `${p.symbol ?? ""} ${(p.direction || "").toUpperCase()} ${p.grade ?? ""}`,
-      tone: p.direction === "long" ? "green" : "red",
+      bright: true,
     };
   }
   if (e.event_type === "trade_filled") {
@@ -53,22 +74,21 @@ function summarize(e: StreamEvent, algoName: string): Row | null {
       id: `${e.algorithm_id}-${e.received_at}-fill`,
       ts,
       algo: algoName,
-      kind: "Filled",
+      tone: "fill",
+      kind: "fill",
       detail: `${p.external_id ?? ""} @ ${p.fill_px ?? "—"}`,
-      tone: "blue",
     };
   }
   if (e.event_type === "trade_exit") {
     const p = payload as { status?: string; r_outcome?: number };
     const r = typeof p.r_outcome === "number" ? p.r_outcome.toFixed(2) : "—";
-    const statusLabel = (p.status ?? "").toUpperCase();
     return {
       id: `${e.algorithm_id}-${e.received_at}-exit`,
       ts,
       algo: algoName,
-      kind: `Exit ${statusLabel}`.trim(),
+      tone: "exit",
+      kind: `exit ${(p.status ?? "").toUpperCase()}`.trim(),
       detail: `${r}R`,
-      tone: (p.r_outcome ?? 0) >= 0 ? "green" : "red",
     };
   }
   if (e.event_type === "rejection") {
@@ -77,9 +97,9 @@ function summarize(e: StreamEvent, algoName: string): Row | null {
       id: `${e.algorithm_id}-${e.received_at}-rej`,
       ts,
       algo: algoName,
-      kind: "Rejected",
+      tone: "rejection",
+      kind: "rejected",
       detail: `${p.symbol ?? ""} — ${p.reason ?? "no reason"}`,
-      tone: "amber",
     };
   }
   if (e.event_type === "error") {
@@ -88,9 +108,9 @@ function summarize(e: StreamEvent, algoName: string): Row | null {
       id: `${e.algorithm_id}-${e.received_at}-err`,
       ts,
       algo: algoName,
-      kind: "Error",
+      tone: "error",
+      kind: "error",
       detail: p.message ?? "unknown",
-      tone: "red",
     };
   }
   return null;
@@ -101,7 +121,6 @@ const MAX_ROWS = 200;
 export function HeartbeatStream() {
   const [rows, setRows] = useState<Row[]>([]);
   const [nameMap, setNameMap] = useState<Record<string, string>>({});
-  const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetch("/api/v1/algorithms", { cache: "no-store" })
@@ -115,43 +134,44 @@ export function HeartbeatStream() {
   }, []);
 
   useStream((e) => {
-    if (!e || typeof e !== "object") return;
-    if (!("algorithm_id" in e)) return;
-    const row = summarize(e, nameFor(nameMap, e.algorithm_id));
+    const name = nameMap[e.algorithm_id] || e.algorithm_id.slice(0, 10);
+    const row = summarize(e, name);
     if (!row) return;
-    setRows((rs) => {
-      const next = [row, ...rs];
-      return next.slice(0, MAX_ROWS);
-    });
+    setRows((rs) => [row, ...rs].slice(0, MAX_ROWS));
   });
 
   return (
     <Card>
-      <CardHeader
+      <SectionHeader
         title="Live event stream"
-        subtitle="Heartbeats, alerts, fills, exits — newest first"
-        right={
-          <Badge variant="muted">
-            {rows.length} {rows.length === 1 ? "event" : "events"}
-          </Badge>
-        }
+        right={`${rows.length} events · newest first`}
       />
-      <div ref={scrollRef} className="max-h-[420px] overflow-auto">
+      <div className="max-h-[420px] overflow-auto">
         {rows.length === 0 ? (
-          <div className="px-4 py-10 text-center text-sm text-zinc-500">
-            Waiting for algorithm activity…
+          <div className="px-[18px] py-10 text-center text-[11px] text-dim">
+            WAITING_FOR_ALGORITHM_ACTIVITY
           </div>
         ) : (
-          <ul className="divide-y divide-zinc-900">
+          <ul>
             {rows.map((r) => (
               <li
                 key={r.id}
-                className="px-4 py-2 flex items-center gap-3 text-xs hover:bg-zinc-900/40"
+                className="px-[18px] py-1.5 flex items-center gap-3.5 border-b border-bg-el-2 text-[11px]"
               >
-                <span className="num text-zinc-500 w-20 shrink-0">{r.ts}</span>
-                <span className="text-zinc-300 w-32 shrink-0 truncate">{r.algo}</span>
-                <Badge variant={r.tone}>{r.kind}</Badge>
-                <span className="num text-zinc-400 truncate flex-1">{r.detail}</span>
+                <span className="w-14 flex-shrink-0 text-dim">{r.ts}</span>
+                <span className="w-32 flex-shrink-0 text-text text-[10px] truncate uppercase tracking-[0.04em]">
+                  {r.algo}
+                </span>
+                <span
+                  className={`w-[72px] flex-shrink-0 text-[10px] tracking-[0.08em] uppercase ${TONE_COLOR[r.tone]}`}
+                >
+                  {r.kind}
+                </span>
+                <span
+                  className={`flex-1 truncate ${r.bright ? "text-bright" : "text-dim"}`}
+                >
+                  {r.detail}
+                </span>
               </li>
             ))}
           </ul>

@@ -7,16 +7,14 @@ export const dynamic = "force-dynamic";
 
 export default function HomePage() {
   return (
-    <div className="px-5 py-5 space-y-5">
+    <div className="px-6 py-[18px] flex flex-col gap-3.5">
       <AlgoStatusBar />
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        <div className="lg:col-span-2 space-y-5">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-3.5">
+        <div className="flex flex-col gap-3.5">
           <HeartbeatStream />
           <EquityMini />
         </div>
-        <div className="space-y-5">
-          <ActiveTrades />
-        </div>
+        <ActiveTrades />
       </div>
     </div>
   );

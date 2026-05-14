@@ -14,16 +14,16 @@ type Variant =
   | "grade-b";
 
 const variants: Record<Variant, string> = {
-  default: "bg-zinc-800 text-zinc-100",
-  green: "bg-green-500/10 text-green-400 ring-1 ring-inset ring-green-500/20",
-  red: "bg-red-500/10 text-red-400 ring-1 ring-inset ring-red-500/20",
-  amber: "bg-amber-500/10 text-amber-400 ring-1 ring-inset ring-amber-500/20",
-  blue: "bg-blue-500/10 text-blue-400 ring-1 ring-inset ring-blue-500/20",
-  outline: "border border-zinc-700 text-zinc-300",
-  muted: "bg-zinc-800/60 text-zinc-400",
-  "grade-aplus": "bg-emerald-500/15 text-emerald-300 ring-1 ring-inset ring-emerald-500/25",
-  "grade-a": "bg-cyan-500/15 text-cyan-300 ring-1 ring-inset ring-cyan-500/25",
-  "grade-b": "bg-zinc-700/40 text-zinc-300 ring-1 ring-inset ring-zinc-600/40",
+  default: "bg-bg-el-2 text-text border border-div",
+  green: "bg-[rgba(0,212,154,0.08)] text-green border border-[rgba(0,212,154,0.25)]",
+  red: "bg-[rgba(255,82,82,0.08)] text-red border border-[rgba(255,82,82,0.25)]",
+  amber: "bg-[rgba(255,170,51,0.08)] text-amber border border-[rgba(255,170,51,0.25)]",
+  blue: "bg-[rgba(91,138,248,0.08)] text-blue border border-[rgba(91,138,248,0.25)]",
+  outline: "bg-transparent text-text border border-div",
+  muted: "bg-transparent text-dim border border-transparent",
+  "grade-aplus": "bg-[rgba(255,170,51,0.08)] text-amber border border-[rgba(255,170,51,0.25)]",
+  "grade-a": "bg-transparent text-text border border-div",
+  "grade-b": "bg-transparent text-muted border border-div",
 };
 
 export function Badge({
@@ -38,7 +38,8 @@ export function Badge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium",
+        // Terminal Pro: square corners, uppercase, tight letter-spacing
+        "inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] tracking-[0.06em] uppercase",
         variants[variant],
         className,
       )}
@@ -55,25 +56,45 @@ export function GradeBadge({ grade }: { grade: string }) {
 }
 
 export function DirectionBadge({ dir }: { dir: string }) {
+  const long = dir === "long";
   return (
-    <Badge variant={dir === "long" ? "green" : "red"}>{dir.toUpperCase()}</Badge>
+    <span
+      className={cn(
+        "inline-flex items-center text-[10px] tracking-[0.06em] uppercase",
+        long ? "text-green" : "text-red",
+      )}
+    >
+      {long ? "▲ LONG" : "▼ SHORT"}
+    </span>
   );
 }
 
 const STATUS_LABELS: Record<string, string> = {
-  pending: "Pending",
-  filled: "Filled",
+  pending: "PENDING",
+  filled: "FILLED",
   tp1: "TP1",
   tp2: "TP2",
   tp3: "TP3",
-  be_after_tp1: "Breakeven",
-  stopped: "Stopped",
-  expired: "Expired",
+  be_after_tp1: "BE",
+  stopped: "STOPPED",
+  expired: "EXPIRED",
 };
 
 export function StatusBadge({ status }: { status: string }) {
-  const win = ["tp1", "tp2", "tp3", "be_after_tp1"].includes(status);
-  const lose = status === "stopped";
-  const v: Variant = win ? "green" : lose ? "red" : status === "filled" ? "blue" : "muted";
-  return <Badge variant={v}>{STATUS_LABELS[status] ?? status}</Badge>;
+  const label = STATUS_LABELS[status] ?? status.toUpperCase();
+  const cls =
+    status === "stopped"
+      ? "text-red"
+      : ["tp1", "tp2", "tp3"].includes(status)
+        ? "text-green"
+        : status === "be_after_tp1"
+          ? "text-dim"
+          : status === "filled"
+            ? "text-blue"
+            : status === "pending"
+              ? "text-muted"
+              : "text-dim";
+  return (
+    <span className={cn("text-[10px] tracking-[0.06em]", cls)}>{label}</span>
+  );
 }

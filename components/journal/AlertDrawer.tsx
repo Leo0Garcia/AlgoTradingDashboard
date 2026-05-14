@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Badge, DirectionBadge, GradeBadge, StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { StatusBadge } from "@/components/ui/badge";
 import { fmtDateTime, fmtNum, fmtR } from "@/lib/utils";
 import { X } from "lucide-react";
 import type { Alert } from "@/lib/types";
@@ -42,7 +42,15 @@ export function AlertDrawer({ alertId, algoNameMap, onClose }: Props) {
 
   return (
     <dialog ref={dialogRef} className="drawer">
-      {alert ? <Content alert={alert} algoName={algoNameMap[alert.algorithm_id]} onClose={() => dialogRef.current?.close()} /> : <div className="p-6 text-sm text-zinc-500">Loading…</div>}
+      {alert ? (
+        <Content
+          alert={alert}
+          algoName={algoNameMap[alert.algorithm_id]}
+          onClose={() => dialogRef.current?.close()}
+        />
+      ) : (
+        <div className="p-6 text-[11px] text-dim">LOADING…</div>
+      )}
     </dialog>
   );
 }
@@ -58,11 +66,27 @@ function Content({
 }) {
   return (
     <div className="flex flex-col h-full">
-      <div className="px-5 py-4 border-b border-zinc-800 flex items-center justify-between sticky top-0 bg-zinc-950/95 backdrop-blur">
+      <div className="px-5 py-3 border-b border-div flex items-center justify-between sticky top-0 bg-bg-el">
         <div className="flex items-center gap-3">
-          <span className="num text-lg font-semibold">{alert.symbol}</span>
-          <DirectionBadge dir={alert.direction} />
-          <GradeBadge grade={alert.grade} />
+          <span className="text-lg font-semibold text-bright">{alert.symbol}</span>
+          <span
+            className={`text-[10px] tracking-[0.06em] ${
+              alert.direction === "long" ? "text-green" : "text-red"
+            }`}
+          >
+            {alert.direction === "long" ? "▲ LONG" : "▼ SHORT"}
+          </span>
+          <span
+            className={`text-[10px] font-semibold ${
+              alert.grade === "A+"
+                ? "text-amber"
+                : alert.grade === "A"
+                  ? "text-text"
+                  : "text-muted"
+            }`}
+          >
+            {alert.grade}
+          </span>
           <StatusBadge status={alert.status} />
         </div>
         <Button size="sm" variant="ghost" onClick={onClose}>
@@ -73,22 +97,24 @@ function Content({
       <div className="flex-1 overflow-auto p-5 space-y-5">
         <section>
           <H>Algorithm</H>
-          <div className="text-sm text-zinc-300">{algoName ?? alert.algorithm_id}</div>
-          <div className="num text-xs text-zinc-500 mt-0.5">
-            External ID {alert.external_id} · {fmtDateTime(alert.received_at)}
+          <div className="text-[12px] text-text uppercase tracking-[0.04em]">
+            {algoName ?? alert.algorithm_id}
+          </div>
+          <div className="text-[10px] text-dim mt-0.5">
+            EXT_ID {alert.external_id} · {fmtDateTime(alert.received_at)}
           </div>
         </section>
 
         <section className="grid grid-cols-4 gap-2">
-          <Stat label="Entry" value={`${fmtNum(alert.entry_lo)} – ${fmtNum(alert.entry_hi)}`} />
-          <Stat label="Stop" value={fmtNum(alert.stop)} tone="red" />
+          <Stat label="ENTRY" value={`${fmtNum(alert.entry_lo)} – ${fmtNum(alert.entry_hi)}`} />
+          <Stat label="STOP" value={fmtNum(alert.stop)} tone="red" />
           <Stat label="TP1" value={fmtNum(alert.tp1)} tone="green" />
           <Stat label="TP2" value={fmtNum(alert.tp2)} tone="green" />
           <Stat label="TP3" value={fmtNum(alert.tp3)} tone="green" />
-          <Stat label="Fill" value={fmtNum(alert.fill_px)} />
-          <Stat label="Exit" value={fmtNum(alert.exit_px)} />
+          <Stat label="FILL" value={fmtNum(alert.fill_px)} />
+          <Stat label="EXIT" value={fmtNum(alert.exit_px)} />
           <Stat
-            label="R outcome"
+            label="R OUTCOME"
             value={alert.r_outcome == null ? "—" : `${alert.r_outcome.toFixed(2)}R`}
             tone={(alert.r_outcome ?? 0) >= 0 ? "green" : "red"}
           />
@@ -97,7 +123,7 @@ function Content({
         {alert.recipe ? (
           <section>
             <H>Recipe</H>
-            <div className="text-sm text-zinc-300">{alert.recipe}</div>
+            <div className="text-[12px] text-text">{alert.recipe}</div>
           </section>
         ) : null}
 
@@ -106,9 +132,12 @@ function Content({
             <H>Confluences</H>
             <div className="flex flex-wrap gap-1.5">
               {alert.confluences.map((c) => (
-                <Badge key={c} variant="outline">
+                <span
+                  key={c}
+                  className="px-1.5 py-0.5 border border-div text-text text-[10px] uppercase tracking-[0.06em]"
+                >
                   {c}
-                </Badge>
+                </span>
               ))}
             </div>
           </section>
@@ -117,7 +146,7 @@ function Content({
         {alert.rationale ? (
           <section>
             <H>Rationale</H>
-            <p className="text-sm text-zinc-300 whitespace-pre-wrap leading-relaxed">
+            <p className="text-[12px] text-text whitespace-pre-wrap leading-relaxed">
               {alert.rationale}
             </p>
           </section>
@@ -126,18 +155,22 @@ function Content({
         {alert.llm_decision ? (
           <section>
             <H>LLM review</H>
-            <div className="rounded-md border border-zinc-800 bg-zinc-900/40 p-3 space-y-1.5">
-              <div className="flex items-center gap-2">
-                <Badge
-                  variant={alert.llm_decision.decision === "approve" ? "green" : "red"}
+            <div className="border border-div bg-bg-el-2 p-3 space-y-1.5">
+              <div className="flex items-center gap-2 text-[10px] tracking-[0.06em] uppercase">
+                <span
+                  className={
+                    alert.llm_decision.decision === "approve"
+                      ? "text-green"
+                      : "text-red"
+                  }
                 >
-                  <span className="capitalize">{alert.llm_decision.decision}</span>
-                </Badge>
-                <Badge variant="muted">
-                  <span className="capitalize">{alert.llm_decision.confidence} confidence</span>
-                </Badge>
+                  ▸ {alert.llm_decision.decision}
+                </span>
+                <span className="text-dim">
+                  · {alert.llm_decision.confidence} CONFIDENCE
+                </span>
               </div>
-              <div className="text-sm text-zinc-300 whitespace-pre-wrap">
+              <div className="text-[12px] text-text whitespace-pre-wrap">
                 {alert.llm_decision.reason}
               </div>
             </div>
@@ -146,11 +179,11 @@ function Content({
 
         <section>
           <H>Lifecycle</H>
-          <div className="text-xs text-zinc-400 space-y-0.5">
-            <div>Received {fmtDateTime(alert.received_at)}</div>
-            <div>Filled {alert.fill_ts ? fmtDateTime(alert.fill_ts) : "—"}</div>
-            <div>Exited {alert.exit_ts ? fmtDateTime(alert.exit_ts) : "—"}</div>
-            <div>Outcome {fmtR(alert.r_outcome)}</div>
+          <div className="text-[11px] text-dim space-y-0.5 uppercase tracking-[0.04em]">
+            <div>RECEIVED {fmtDateTime(alert.received_at)}</div>
+            <div>FILLED {alert.fill_ts ? fmtDateTime(alert.fill_ts) : "—"}</div>
+            <div>EXITED {alert.exit_ts ? fmtDateTime(alert.exit_ts) : "—"}</div>
+            <div>OUTCOME {fmtR(alert.r_outcome)}</div>
           </div>
         </section>
       </div>
@@ -160,7 +193,9 @@ function Content({
 
 function H({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1.5">{children}</h3>
+    <h3 className="text-[9px] tracking-[0.1em] text-green uppercase mb-1.5">
+      ▸ {children}
+    </h3>
   );
 }
 
@@ -174,15 +209,13 @@ function Stat({
   tone?: "default" | "red" | "green";
 }) {
   const cls =
-    tone === "red"
-      ? "text-red-400"
-      : tone === "green"
-        ? "text-green-400"
-        : "text-zinc-100";
+    tone === "red" ? "text-red" : tone === "green" ? "text-green" : "text-bright";
   return (
-    <div className="rounded-md bg-zinc-900/60 px-3 py-2">
-      <div className={`num text-sm font-medium ${cls}`}>{value}</div>
-      <div className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</div>
+    <div className="bg-bg-el-2 px-3 py-2">
+      <div className={`text-[13px] font-medium ${cls}`}>{value}</div>
+      <div className="text-[9px] tracking-[0.1em] text-dim uppercase mt-0.5">
+        {label}
+      </div>
     </div>
   );
 }

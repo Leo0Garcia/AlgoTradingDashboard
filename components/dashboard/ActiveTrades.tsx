@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useStream } from "@/hooks/useStream";
-import { Card, CardHeader } from "@/components/ui/card";
-import { Badge, DirectionBadge, GradeBadge } from "@/components/ui/badge";
-import { fmtNum, fmtTime, relativeTime } from "@/lib/utils";
+import { Card } from "@/components/ui/card";
+import { SectionHeader } from "@/components/ui/section-header";
+import { fmtNum } from "@/lib/utils";
 import type { Alert } from "@/lib/types";
 
 export function ActiveTrades() {
@@ -35,40 +35,17 @@ export function ActiveTrades() {
   });
 
   return (
-    <Card>
-      <CardHeader
-        title="Active trades"
-        subtitle="Positions currently in market"
-        right={<Badge variant="muted">{trades.length}</Badge>}
-      />
+    <Card className="flex flex-col">
+      <SectionHeader title="Active trades" right={`${trades.length} open`} />
       <div className="max-h-[640px] overflow-auto">
         {trades.length === 0 ? (
-          <div className="px-4 py-10 text-center text-sm text-zinc-500">
-            No active trades
+          <div className="px-10 py-10 text-center text-[11px] text-dim">
+            NO_ACTIVE_TRADES
           </div>
         ) : (
-          <ul className="divide-y divide-zinc-900">
+          <ul>
             {trades.map((t) => (
-              <li key={t.id} className="px-4 py-3">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="num text-sm font-medium text-zinc-100">{t.symbol}</span>
-                    <DirectionBadge dir={t.direction} />
-                    <GradeBadge grade={t.grade} />
-                  </div>
-                  <Badge variant="blue">{t.status}</Badge>
-                </div>
-                <div className="mt-2 grid grid-cols-4 gap-2 text-[11px]">
-                  <Cell label="Fill" value={fmtNum(t.fill_px)} tone="default" />
-                  <Cell label="Stop" value={fmtNum(t.stop)} tone="red" />
-                  <Cell label="TP1" value={fmtNum(t.tp1)} tone="green" />
-                  <Cell label="TP2" value={fmtNum(t.tp2)} tone="green" />
-                </div>
-                <div className="mt-2 text-[11px] text-zinc-500 flex items-center justify-between">
-                  <span>Filled {fmtTime(t.fill_ts)}</span>
-                  <span>{relativeTime(t.fill_ts ?? t.received_at)}</span>
-                </div>
-              </li>
+              <TradeRow key={t.id} trade={t} />
             ))}
           </ul>
         )}
@@ -77,25 +54,48 @@ export function ActiveTrades() {
   );
 }
 
-function Cell({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: string;
-  tone: "default" | "red" | "green";
-}) {
-  const cls =
-    tone === "red"
-      ? "text-red-400"
-      : tone === "green"
-        ? "text-green-400"
-        : "text-zinc-200";
+function TradeRow({ trade: t }: { trade: Alert }) {
+  // Unrealized R isn't tracked yet (no live spot per active trade) — show fill px.
+  const fill = t.fill_px ?? 0;
   return (
-    <div className="rounded bg-zinc-900/60 px-2 py-1">
-      <div className={`num ${cls}`}>{value}</div>
-      <div className="text-[9px] uppercase tracking-wider text-zinc-500">{label}</div>
-    </div>
+    <li className="px-[18px] py-4 border-b border-bg-el-2">
+      <div className="flex justify-between items-start mb-3">
+        <div>
+          <div className="text-bright font-semibold text-[15px]">{t.symbol}</div>
+          <div className="flex gap-2.5 mt-1 text-[10px] tracking-[0.06em]">
+            <span className={t.direction === "long" ? "text-green" : "text-red"}>
+              {t.direction === "long" ? "▲ LONG" : "▼ SHORT"}
+            </span>
+            <span className="text-amber">{t.grade}</span>
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="text-bright font-semibold text-[15px] uppercase">
+            {t.status === "filled" ? "OPEN" : t.status.toUpperCase()}
+          </div>
+          <div className="text-dim text-[9px] mt-0.5 tracking-[0.06em]">
+            UNREALIZED
+          </div>
+        </div>
+      </div>
+      <div className="grid grid-cols-3 gap-2.5">
+        {[
+          ["ENTRY", fmtNum((t.entry_lo + t.entry_hi) / 2)],
+          ["STOP", fmtNum(t.stop)],
+          ["FILL", fmtNum(fill || null)],
+        ].map(([label, value]) => (
+          <div key={label}>
+            <div className="text-dim text-[9px] tracking-[0.08em] mb-1">
+              {label}
+            </div>
+            <div
+              className={`text-[11px] ${label === "STOP" ? "text-red" : "text-bright"}`}
+            >
+              {value}
+            </div>
+          </div>
+        ))}
+      </div>
+    </li>
   );
 }

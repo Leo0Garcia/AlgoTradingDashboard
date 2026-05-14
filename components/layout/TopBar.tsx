@@ -1,32 +1,90 @@
 "use client";
 
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useStream } from "@/hooks/useStream";
 
+const PAGES = [
+  { href: "/", label: "LIVE" },
+  { href: "/journal", label: "JOURNAL" },
+  { href: "/analytics", label: "ANALYTICS" },
+  { href: "/algos", label: "ALGORITHMS" },
+];
+
+function pad2(n: number) {
+  return String(n).padStart(2, "0");
+}
+function fmtClock(d: Date) {
+  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+}
+
 export function TopBar() {
-  const [time, setTime] = useState<string>("");
+  const pathname = usePathname();
   const { connected, lastEventAt } = useStream();
+  const [now, setNow] = useState<Date | null>(null);
 
   useEffect(() => {
-    const t = setInterval(() => setTime(new Date().toLocaleTimeString()), 1000);
-    setTime(new Date().toLocaleTimeString());
+    setNow(new Date());
+    const t = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
 
+  const isActive = (href: string) =>
+    href === "/" ? pathname === "/" : pathname.startsWith(href);
+
   return (
-    <div className="flex items-center gap-3 text-xs text-zinc-400">
-      <span className="flex items-center gap-1.5">
-        <span
-          className={`h-1.5 w-1.5 rounded-full ${connected ? "bg-green-500" : "bg-zinc-600"}`}
-        />
-        {connected ? "Stream live" : "Stream offline"}
-      </span>
-      {lastEventAt ? (
-        <span className="text-zinc-600">
-          Last event {new Date(lastEventAt).toLocaleTimeString()}
+    <header className="h-11 border-b border-div flex items-stretch pl-6 flex-shrink-0">
+      <Link
+        href="/"
+        className="flex items-center gap-2.5 pr-8 border-r border-div"
+      >
+        <span className="text-green text-[15px] leading-none">◈</span>
+        <span className="text-bright font-semibold tracking-[0.05em] text-[13px]">
+          ALGOMANAGER
         </span>
-      ) : null}
-      <span className="num text-zinc-500">{time}</span>
-    </div>
+        <span className="text-dim text-[11px]">/</span>
+        <span className="text-dim text-[10px] tracking-[0.06em]">CMD</span>
+      </Link>
+
+      <nav className="flex items-stretch">
+        {PAGES.map((p) => {
+          const active = isActive(p.href);
+          return (
+            <Link
+              key={p.href}
+              href={p.href}
+              className={[
+                "flex items-center px-4 text-[10px] tracking-[0.1em] uppercase border-b-2 border-transparent transition-colors",
+                active
+                  ? "text-green border-b-green"
+                  : "text-dim hover:text-text",
+              ].join(" ")}
+            >
+              {p.label}
+            </Link>
+          );
+        })}
+      </nav>
+
+      <div className="ml-auto flex items-center gap-5 pr-6 text-[10px] tracking-[0.04em]">
+        <span className="flex items-center gap-1.5">
+          <span
+            className={`pulse-dot ${connected ? "" : "stopped"} !w-1.5 !h-1.5`}
+            aria-hidden
+          />
+          <span className={connected ? "text-green" : "text-dim"}>
+            {connected ? "STREAM_LIVE" : "STREAM_OFFLINE"}
+          </span>
+        </span>
+        <span className="text-[#333]">
+          LAST_EVT{" "}
+          {lastEventAt
+            ? fmtClock(new Date(lastEventAt))
+            : "—:—:—"}
+        </span>
+        <span className="text-muted">{now ? fmtClock(now) : "—:—:—"}</span>
+      </div>
+    </header>
   );
 }

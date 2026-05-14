@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useStream } from "@/hooks/useStream";
 import { Button } from "@/components/ui/button";
-import { fmtR, relativeTime } from "@/lib/utils";
+import { fmtR } from "@/lib/utils";
 import { Play, Square } from "lucide-react";
-import { SessionBadge, SessionBanner } from "./SessionBadge";
+import { SessionBanner, SessionInline } from "./SessionBadge";
 import type { SessionState } from "@/lib/types";
 
 interface AlgorithmEntry {
@@ -24,6 +24,14 @@ interface AlgorithmEntry {
     losses: number;
     r_sum: number;
   };
+}
+
+function hbAgo(iso: string | null): string {
+  if (!iso) return "—";
+  const sec = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
+  if (sec < 60) return `${sec}s ago`;
+  if (sec < 3600) return `${Math.floor(sec / 60)}m ago`;
+  return `${Math.floor(sec / 3600)}h ago`;
 }
 
 export function AlgoStatusBar() {
@@ -47,7 +55,11 @@ export function AlgoStatusBar() {
   }, [refresh]);
 
   useStream((e) => {
-    if (e.kind === "heartbeat" || e.event_type === "trade_exit" || e.event_type === "alert") {
+    if (
+      e.kind === "heartbeat" ||
+      e.event_type === "trade_exit" ||
+      e.event_type === "alert"
+    ) {
       refresh();
     }
   });
@@ -63,10 +75,10 @@ export function AlgoStatusBar() {
 
   if (algos.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-zinc-800 p-6 text-center text-sm text-zinc-500">
-        No algorithms registered yet. Register one from the{" "}
-        <span className="text-zinc-300">Algorithms</span> tab, or via{" "}
-        <code className="num text-zinc-400">POST /api/v1/algorithms/register</code>.
+      <div className="bg-bg-el border-l-[3px] border-l-div px-[18px] py-3 text-[11px] text-dim">
+        NO_ALGORITHMS_REGISTERED — register one from the{" "}
+        <span className="text-text">Algorithms</span> tab, or via{" "}
+        <code className="text-text">POST /api/v1/algorithms/register</code>.
       </div>
     );
   }
@@ -76,7 +88,7 @@ export function AlgoStatusBar() {
   );
 
   return (
-    <div className="space-y-3">
+    <div className="flex flex-col gap-3.5">
       {pausedAlgos.length > 0 ? (
         <div className="space-y-2">
           {pausedAlgos.map((a) => (
@@ -84,73 +96,83 @@ export function AlgoStatusBar() {
           ))}
         </div>
       ) : null}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+
       {algos.map((a) => (
-        <div
-          key={a.id}
-          className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3.5"
-        >
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <span className={`pulse-dot ${a.status}`} />
-              <div className="min-w-0">
-                <div className="text-sm font-medium text-zinc-100 truncate">{a.name}</div>
-                <div className="text-[10px] uppercase tracking-wider text-zinc-500">
-                  {a.type}
-                </div>
-              </div>
-            </div>
-            <div>
-              {a.status === "running" ? (
-                <Button size="sm" variant="danger" onClick={() => control(a.id, "stop")}>
-                  <Square className="h-3 w-3" /> Stop
-                </Button>
-              ) : (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => control(a.id, "start")}
-                  disabled={!a.launch_cmd}
-                  title={a.launch_cmd ?? "No launch command configured"}
-                >
-                  <Play className="h-3 w-3" /> Start
-                </Button>
-              )}
-            </div>
-          </div>
-          <div className="mt-3 flex items-center justify-between text-xs">
-            <span className="text-zinc-500">
-              Heartbeat {relativeTime(a.last_heartbeat)}
-            </span>
-            <span className="num text-zinc-400">
-              {a.symbols.join(" · ") || "—"}
-            </span>
-          </div>
-          {a.last_session ? (
-            <div className="mt-2">
-              <SessionBadge session={a.last_session} compact />
-            </div>
-          ) : null}
-          <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-            <Stat label="Alerts" value={String(a.stats_today.total_alerts)} />
-            <Stat
-              label="W / L"
-              value={`${a.stats_today.wins} / ${a.stats_today.losses}`}
-            />
-            <Stat
-              label="R total"
-              value={fmtR(a.stats_today.r_sum)}
-              tone={
-                a.stats_today.r_sum > 0
-                  ? "green"
-                  : a.stats_today.r_sum < 0
-                    ? "red"
-                    : "default"
-              }
-            />
-          </div>
-        </div>
+        <StatusRow key={a.id} algo={a} onControl={control} />
       ))}
+    </div>
+  );
+}
+
+function StatusRow({
+  algo: a,
+  onControl,
+}: {
+  algo: AlgorithmEntry;
+  onControl: (id: string, action: "start" | "stop") => void;
+}) {
+  const accent =
+    a.status === "running"
+      ? "border-l-green"
+      : a.status === "errored"
+        ? "border-l-red"
+        : "border-l-div";
+
+  return (
+    <div
+      className={`bg-bg-el border-l-[3px] ${accent} px-[18px] py-3 flex items-center gap-7 flex-wrap`}
+    >
+      <span className={`pulse-dot ${a.status} flex-shrink-0`} />
+
+      <div className="min-w-0">
+        <div className="text-bright font-semibold text-[14px] tracking-[0.02em] uppercase truncate">
+          {a.name}
+        </div>
+        <div className="text-dim text-[10px] mt-0.5 tracking-[0.06em] uppercase">
+          {a.type} · HB {hbAgo(a.last_heartbeat)}
+        </div>
+      </div>
+
+      <div className="border-l border-div pl-7 flex items-center gap-5">
+        <span className="text-text text-[12px]">{a.symbols.join(" · ") || "—"}</span>
+        <SessionInline session={a.last_session} />
+      </div>
+
+      <div className="ml-auto flex items-center gap-9">
+        <Stat label="ALERTS" value={String(a.stats_today.total_alerts)} />
+        <Stat
+          label="W / L"
+          value={`${a.stats_today.wins} / ${a.stats_today.losses}`}
+        />
+        <Stat
+          label="Σ R"
+          value={fmtR(a.stats_today.r_sum)}
+          tone={
+            a.stats_today.r_sum > 0
+              ? "green"
+              : a.stats_today.r_sum < 0
+                ? "red"
+                : "default"
+          }
+        />
+      </div>
+
+      <div className="flex">
+        {a.status === "running" ? (
+          <Button size="sm" variant="danger" onClick={() => onControl(a.id, "stop")}>
+            ■ STOP
+          </Button>
+        ) : (
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={!a.launch_cmd}
+            title={a.launch_cmd ?? "No launch command configured"}
+            onClick={() => onControl(a.id, "start")}
+          >
+            <Play className="h-3 w-3" /> START
+          </Button>
+        )}
       </div>
     </div>
   );
@@ -166,11 +188,15 @@ function Stat({
   tone?: "default" | "green" | "red";
 }) {
   const cls =
-    tone === "green" ? "text-green-400" : tone === "red" ? "text-red-400" : "text-zinc-200";
+    tone === "green"
+      ? "text-green"
+      : tone === "red"
+        ? "text-red"
+        : "text-bright";
   return (
-    <div className="rounded-md bg-zinc-900/60 px-2 py-1.5">
-      <div className={`num text-sm font-medium ${cls}`}>{value}</div>
-      <div className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</div>
+    <div className="text-right">
+      <div className="text-[9px] tracking-[0.1em] text-dim uppercase">{label}</div>
+      <div className={`text-[18px] font-semibold mt-0.5 ${cls}`}>{value}</div>
     </div>
   );
 }

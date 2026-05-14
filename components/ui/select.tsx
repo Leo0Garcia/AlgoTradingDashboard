@@ -12,7 +12,8 @@ export function Select({
     <select
       {...rest}
       className={cn(
-        "h-8 rounded-md border border-zinc-700 bg-zinc-900 px-2 text-xs text-zinc-200 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500",
+        "h-7 bg-bg-el-2 border border-div text-text px-2 text-[11px] cursor-pointer",
+        "focus-visible:outline-none focus-visible:border-muted",
         className,
       )}
     >
