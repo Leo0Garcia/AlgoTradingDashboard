@@ -20,6 +20,7 @@ const PatchBody = z.object({
   symbols: z.array(z.string()).optional(),
   db_path: z.string().nullable().optional(),
   launch_cmd: z.string().nullable().optional(),
+  working_dir: z.string().nullable().optional(),
   account_id: z.string().nullable().optional(),
   enabled: z.boolean().optional(),
 });

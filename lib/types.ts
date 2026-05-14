@@ -42,6 +42,8 @@ export interface Algorithm {
   pid: number | null;
   last_heartbeat: string | null;
   last_session: SessionState | null;
+  working_dir: string | null;
+  last_launch_error: string | null;
   created_at: string;
   updated_at: string;
 }

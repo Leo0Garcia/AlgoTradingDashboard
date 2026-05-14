@@ -21,6 +21,8 @@ interface AlgorithmEntry {
   symbols: string[];
   launch_cmd: string | null;
   db_path: string | null;
+  working_dir: string | null;
+  last_launch_error: string | null;
   enabled: boolean;
   account_id: string | null;
   last_session: SessionState | null;
@@ -81,6 +83,9 @@ export function AlgosView() {
   const [discovered, setDiscovered] = useState<DiscoverResult | null>(null);
   const [regenTarget, setRegenTarget] = useState<string | null>(null);
   const [subDeleteTarget, setSubDeleteTarget] = useState<Subscriber | null>(null);
+  const [controlErrors, setControlErrors] = useState<
+    Record<string, { message: string; log_path?: string; log_tail?: string }>
+  >({});
 
   const load = useCallback(async () => {
     const [a, s] = await Promise.all([
@@ -98,12 +103,35 @@ export function AlgosView() {
   }, [load]);
 
   const control = async (id: string, action: "start" | "stop") => {
-    await fetch(`/api/v1/algorithms/${id}/control`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ action }),
+    setControlErrors((m) => {
+      const next = { ...m };
+      delete next[id];
+      return next;
     });
-    load();
+    try {
+      const r = await fetch(`/api/v1/algorithms/${id}/control`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      if (!r.ok) {
+        const j = (await r.json().catch(() => ({}))) as {
+          error?: string;
+          log_path?: string;
+          log_tail?: string;
+        };
+        setControlErrors((m) => ({
+          ...m,
+          [id]: {
+            message: j.error ?? `${action} failed (HTTP ${r.status})`,
+            log_path: j.log_path,
+            log_tail: j.log_tail,
+          },
+        }));
+      }
+    } finally {
+      load();
+    }
   };
 
   const testTelegram = async () => {
@@ -301,6 +329,46 @@ export function AlgosView() {
             </tbody>
           </table>
         </div>
+        {Object.entries(controlErrors).map(([id, err]) => {
+          const a = algos.find((x) => x.id === id);
+          return (
+            <div
+              key={id}
+              className="px-[18px] py-2.5 border-t border-div text-[11px] bg-[rgba(255,82,82,0.05)]"
+            >
+              <div className="flex items-start gap-3">
+                <span className="text-red text-[10px] tracking-[0.06em] flex-shrink-0">
+                  ▸ {a?.name?.toUpperCase() ?? id} · LAUNCH FAILED
+                </span>
+                <div className="flex-1 text-text whitespace-pre-wrap leading-relaxed">
+                  {err.message}
+                </div>
+                <button
+                  onClick={() =>
+                    setControlErrors((m) => {
+                      const n = { ...m };
+                      delete n[id];
+                      return n;
+                    })
+                  }
+                  className="text-dim text-[10px] tracking-[0.06em] hover:text-text cursor-pointer"
+                >
+                  DISMISS
+                </button>
+              </div>
+              {err.log_tail ? (
+                <pre className="mt-2 text-[10px] text-dim whitespace-pre-wrap leading-snug max-h-40 overflow-auto">
+                  {err.log_tail}
+                </pre>
+              ) : null}
+              {err.log_path ? (
+                <div className="mt-1.5 text-[10px] text-dim">
+                  Tail: <span className="text-text">tail -f {err.log_path}</span>
+                </div>
+              ) : null}
+            </div>
+          );
+        })}
       </Card>
 
       <Card>
@@ -535,6 +603,7 @@ function RegisterForm({
   const [type, setType] = useState("hybrid");
   const [symbols, setSymbols] = useState("MNQ1!,MES1!");
   const [launchCmd, setLaunchCmd] = useState("");
+  const [workingDir, setWorkingDir] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const submit = async () => {
@@ -548,6 +617,7 @@ function RegisterForm({
           type,
           symbols: symbols.split(",").map((s) => s.trim()).filter(Boolean),
           launch_cmd: launchCmd || undefined,
+          working_dir: workingDir || undefined,
         }),
       });
       const j = await r.json();
@@ -578,6 +648,11 @@ function RegisterForm({
           onChange={(e) => setLaunchCmd(e.target.value)}
         />
       </div>
+      <Input
+        placeholder="Working directory (absolute path — where `bash -lc <cmd>` runs)"
+        value={workingDir}
+        onChange={(e) => setWorkingDir(e.target.value)}
+      />
       <div className="flex justify-end gap-2">
         <Button size="sm" variant="ghost" onClick={() => onDone(null)}>
           CANCEL
@@ -633,6 +708,7 @@ function EditModal({
   const [description, setDescription] = useState("");
   const [symbols, setSymbols] = useState("");
   const [launchCmd, setLaunchCmd] = useState("");
+  const [workingDir, setWorkingDir] = useState("");
   const [dbPath, setDbPath] = useState("");
   const [enabled, setEnabled] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -645,6 +721,7 @@ function EditModal({
     setDescription(algo.description ?? "");
     setSymbols(algo.symbols.join(","));
     setLaunchCmd(algo.launch_cmd ?? "");
+    setWorkingDir(algo.working_dir ?? "");
     setDbPath(algo.db_path ?? "");
     setEnabled(algo.enabled);
     setError(null);
@@ -665,6 +742,7 @@ function EditModal({
           description: description || null,
           symbols: symbols.split(",").map((s) => s.trim()).filter(Boolean),
           launch_cmd: launchCmd || null,
+          working_dir: workingDir || null,
           db_path: dbPath || null,
           enabled,
         }),
@@ -706,6 +784,16 @@ function EditModal({
             onChange={(e) => setLaunchCmd(e.target.value)}
             placeholder="uv run python -m trading_agent.live_hybrid -v"
           />
+        </Field>
+        <Field label="WORKING DIRECTORY">
+          <Input
+            value={workingDir}
+            onChange={(e) => setWorkingDir(e.target.value)}
+            placeholder="/Users/leogarcia/Claude/TradingAgent"
+          />
+          <div className="text-[9px] text-dim tracking-[0.04em] mt-1">
+            Absolute path. If empty, derived from `dirname(dirname(db_path))`.
+          </div>
         </Field>
         <Field label="LOCAL DATABASE PATH">
           <Input value={dbPath} onChange={(e) => setDbPath(e.target.value)} />

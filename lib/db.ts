@@ -29,6 +29,8 @@ CREATE TABLE IF NOT EXISTS algorithms (
     pid             INTEGER,
     last_heartbeat  TEXT,
     last_session    TEXT,
+    working_dir     TEXT,
+    last_launch_error TEXT,
     created_at      TEXT NOT NULL,
     updated_at      TEXT NOT NULL
 );
@@ -110,6 +112,12 @@ function runMigrations(db: Database.Database) {
   const present = new Set(cols.map((c) => c.name));
   if (!present.has("last_session")) {
     db.exec("ALTER TABLE algorithms ADD COLUMN last_session TEXT");
+  }
+  if (!present.has("working_dir")) {
+    db.exec("ALTER TABLE algorithms ADD COLUMN working_dir TEXT");
+  }
+  if (!present.has("last_launch_error")) {
+    db.exec("ALTER TABLE algorithms ADD COLUMN last_launch_error TEXT");
   }
 }
 

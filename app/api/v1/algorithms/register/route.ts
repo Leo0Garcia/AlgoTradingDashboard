@@ -12,6 +12,7 @@ const Body = z.object({
   symbols: z.array(z.string()).optional(),
   db_path: z.string().optional(),
   launch_cmd: z.string().optional(),
+  working_dir: z.string().optional(),
   account_id: z.string().nullable().optional(),
 });
 
@@ -36,6 +37,7 @@ export async function POST(req: NextRequest) {
     symbols: parsed.data.symbols,
     db_path: parsed.data.db_path,
     launch_cmd: parsed.data.launch_cmd,
+    working_dir: parsed.data.working_dir,
     account_id: parsed.data.account_id ?? undefined,
   });
   return NextResponse.json(

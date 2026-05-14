@@ -17,6 +17,8 @@ interface AlgorithmEntry {
   last_session: SessionState | null;
   symbols: string[];
   launch_cmd: string | null;
+  working_dir: string | null;
+  last_launch_error: string | null;
   stats_today: {
     total_alerts: number;
     approved_count: number;
@@ -24,6 +26,12 @@ interface AlgorithmEntry {
     losses: number;
     r_sum: number;
   };
+}
+
+interface LaunchError {
+  message: string;
+  log_path?: string;
+  log_tail?: string;
 }
 
 function hbAgo(iso: string | null): string {
@@ -37,6 +45,7 @@ function hbAgo(iso: string | null): string {
 export function AlgoStatusBar() {
   const [algos, setAlgos] = useState<AlgorithmEntry[]>([]);
   const [, force] = useState(0);
+  const [errors, setErrors] = useState<Record<string, LaunchError>>({});
 
   const refresh = useCallback(async () => {
     try {
@@ -65,13 +74,48 @@ export function AlgoStatusBar() {
   });
 
   const control = async (id: string, action: "start" | "stop") => {
-    await fetch(`/api/v1/algorithms/${id}/control`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ action }),
+    setErrors((m) => {
+      const next = { ...m };
+      delete next[id];
+      return next;
     });
-    refresh();
+    try {
+      const r = await fetch(`/api/v1/algorithms/${id}/control`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      if (!r.ok) {
+        const j = (await r.json().catch(() => ({}))) as {
+          error?: string;
+          log_path?: string;
+          log_tail?: string;
+        };
+        setErrors((m) => ({
+          ...m,
+          [id]: {
+            message: j.error ?? `${action} failed (HTTP ${r.status})`,
+            log_path: j.log_path,
+            log_tail: j.log_tail,
+          },
+        }));
+      }
+    } catch (e) {
+      setErrors((m) => ({
+        ...m,
+        [id]: { message: `${action} failed: ${(e as Error).message}` },
+      }));
+    } finally {
+      refresh();
+    }
   };
+
+  const dismissError = (id: string) =>
+    setErrors((m) => {
+      const next = { ...m };
+      delete next[id];
+      return next;
+    });
 
   if (algos.length === 0) {
     return (
@@ -98,8 +142,58 @@ export function AlgoStatusBar() {
       ) : null}
 
       {algos.map((a) => (
-        <StatusRow key={a.id} algo={a} onControl={control} />
+        <div key={a.id} className="flex flex-col gap-2">
+          <StatusRow algo={a} onControl={control} />
+          {errors[a.id] ? (
+            <LaunchErrorBanner
+              error={errors[a.id]}
+              onDismiss={() => dismissError(a.id)}
+            />
+          ) : a.last_launch_error && a.status === "errored" ? (
+            <LaunchErrorBanner
+              error={{ message: a.last_launch_error }}
+              onDismiss={() => dismissError(a.id)}
+            />
+          ) : null}
+        </div>
       ))}
+    </div>
+  );
+}
+
+function LaunchErrorBanner({
+  error,
+  onDismiss,
+}: {
+  error: LaunchError;
+  onDismiss: () => void;
+}) {
+  return (
+    <div className="bg-bg-el border-l-[3px] border-l-red px-[18px] py-2.5 text-[11px]">
+      <div className="flex items-start gap-3">
+        <span className="text-red text-[10px] tracking-[0.06em] flex-shrink-0">
+          ▸ LAUNCH FAILED
+        </span>
+        <div className="flex-1 text-text whitespace-pre-wrap leading-relaxed">
+          {error.message}
+        </div>
+        <button
+          onClick={onDismiss}
+          className="text-dim text-[10px] tracking-[0.06em] hover:text-text cursor-pointer"
+        >
+          DISMISS
+        </button>
+      </div>
+      {error.log_tail ? (
+        <pre className="mt-2 ml-[88px] text-[10px] text-dim whitespace-pre-wrap leading-snug max-h-40 overflow-auto">
+          {error.log_tail}
+        </pre>
+      ) : null}
+      {error.log_path ? (
+        <div className="mt-1.5 ml-[88px] text-[10px] text-dim">
+          Tail: <span className="text-text">tail -f {error.log_path}</span>
+        </div>
+      ) : null}
     </div>
   );
 }

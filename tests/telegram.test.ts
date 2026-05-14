@@ -17,6 +17,8 @@ const algo: Algorithm = {
   pid: null,
   last_heartbeat: null,
   last_session: null,
+  working_dir: null,
+  last_launch_error: null,
   created_at: "",
   updated_at: "",
 };

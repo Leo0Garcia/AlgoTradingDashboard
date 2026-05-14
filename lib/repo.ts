@@ -38,6 +38,8 @@ function mapAlgorithm(r: Row): Algorithm {
     pid: (r.pid as number) ?? null,
     last_heartbeat: (r.last_heartbeat as string) ?? null,
     last_session: parseJSON<SessionState | null>(r.last_session, null),
+    working_dir: (r.working_dir as string) ?? null,
+    last_launch_error: (r.last_launch_error as string) ?? null,
     created_at: r.created_at as string,
     updated_at: r.updated_at as string,
   };
@@ -105,6 +107,7 @@ export function registerAlgorithm(input: {
   symbols?: string[];
   db_path?: string;
   launch_cmd?: string;
+  working_dir?: string;
   account_id?: string;
 }): { algorithm: Algorithm; created: boolean } {
   const db = getDb();
@@ -137,6 +140,10 @@ export function registerAlgorithm(input: {
       sets.push("launch_cmd = ?");
       params.push(input.launch_cmd);
     }
+    if (input.working_dir !== undefined) {
+      sets.push("working_dir = ?");
+      params.push(input.working_dir);
+    }
     if (input.account_id !== undefined) {
       sets.push("account_id = ?");
       params.push(input.account_id);
@@ -157,8 +164,8 @@ export function registerAlgorithm(input: {
   db.prepare(
     `INSERT INTO algorithms
      (id, name, type, description, api_token, account_id, symbols, db_path, launch_cmd,
-      enabled, status, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'stopped', ?, ?)`,
+      working_dir, enabled, status, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'stopped', ?, ?)`,
   ).run(
     id,
     input.name,
@@ -169,6 +176,7 @@ export function registerAlgorithm(input: {
     JSON.stringify(input.symbols ?? []),
     input.db_path ?? null,
     input.launch_cmd ?? null,
+    input.working_dir ?? null,
     ts,
     ts,
   );
@@ -301,6 +309,13 @@ export function setAlgorithmStatus(
   ).run(status, pid, nowIso(), id);
 }
 
+export function setAlgorithmLaunchError(id: string, message: string | null): void {
+  const db = getDb();
+  db.prepare(
+    "UPDATE algorithms SET last_launch_error = ?, updated_at = ? WHERE id = ?",
+  ).run(message, nowIso(), id);
+}
+
 export interface AlgorithmUpdate {
   name?: string;
   type?: string;
@@ -308,6 +323,7 @@ export interface AlgorithmUpdate {
   symbols?: string[];
   db_path?: string | null;
   launch_cmd?: string | null;
+  working_dir?: string | null;
   account_id?: string | null;
   enabled?: boolean;
 }
@@ -341,6 +357,10 @@ export function updateAlgorithm(id: string, patch: AlgorithmUpdate): Algorithm |
   if (patch.launch_cmd !== undefined) {
     sets.push("launch_cmd = ?");
     params.push(patch.launch_cmd);
+  }
+  if (patch.working_dir !== undefined) {
+    sets.push("working_dir = ?");
+    params.push(patch.working_dir);
   }
   if (patch.account_id !== undefined) {
     sets.push("account_id = ?");
