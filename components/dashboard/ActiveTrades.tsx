@@ -55,8 +55,17 @@ export function ActiveTrades() {
 }
 
 function TradeRow({ trade: t }: { trade: Alert }) {
-  // Unrealized R isn't tracked yet (no live spot per active trade) — show fill px.
-  const fill = t.fill_px ?? 0;
+  // The dashboard doesn't yet track a live spot per active trade, so we can't
+  // compute true unrealized R. Display "—" with the UNREALIZED label so the
+  // layout matches the design; the value will populate once live ticks land.
+  const fill = t.fill_px;
+  const current = fill; // placeholder until a live spot feed exists
+  const r = t.r_outcome;
+  const rDisplay =
+    r == null
+      ? "—"
+      : `${r > 0 ? "+" : ""}${r.toFixed(2)}R`;
+  const rTone = r == null ? "text-dim" : r >= 0 ? "text-green" : "text-red";
   return (
     <li className="px-[18px] py-4 border-b border-bg-el-2">
       <div className="flex justify-between items-start mb-3">
@@ -70,9 +79,7 @@ function TradeRow({ trade: t }: { trade: Alert }) {
           </div>
         </div>
         <div className="text-right">
-          <div className="text-bright font-semibold text-[15px] uppercase">
-            {t.status === "filled" ? "OPEN" : t.status.toUpperCase()}
-          </div>
+          <div className={`font-semibold text-[18px] ${rTone}`}>{rDisplay}</div>
           <div className="text-dim text-[9px] mt-0.5 tracking-[0.06em]">
             UNREALIZED
           </div>
@@ -82,14 +89,20 @@ function TradeRow({ trade: t }: { trade: Alert }) {
         {[
           ["ENTRY", fmtNum((t.entry_lo + t.entry_hi) / 2)],
           ["STOP", fmtNum(t.stop)],
-          ["FILL", fmtNum(fill || null)],
+          ["CURRENT", fmtNum(current)],
         ].map(([label, value]) => (
           <div key={label}>
             <div className="text-dim text-[9px] tracking-[0.08em] mb-1">
               {label}
             </div>
             <div
-              className={`text-[11px] ${label === "STOP" ? "text-red" : "text-bright"}`}
+              className={`text-[11px] ${
+                label === "STOP"
+                  ? "text-red"
+                  : label === "CURRENT"
+                    ? "text-bright"
+                    : "text-text"
+              }`}
             >
               {value}
             </div>

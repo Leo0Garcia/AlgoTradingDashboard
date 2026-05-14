@@ -120,7 +120,7 @@ function StatusRow({
 
   return (
     <div
-      className={`bg-bg-el border-l-[3px] ${accent} px-[18px] py-3 flex items-center gap-7 flex-wrap`}
+      className={`bg-bg-el border-l-[3px] ${accent} px-[18px] py-3 flex items-center gap-7`}
     >
       <span className={`pulse-dot ${a.status} flex-shrink-0`} />
 
@@ -128,8 +128,8 @@ function StatusRow({
         <div className="text-bright font-semibold text-[14px] tracking-[0.02em] uppercase truncate">
           {a.name}
         </div>
-        <div className="text-dim text-[10px] mt-0.5 tracking-[0.06em] uppercase">
-          {a.type} · HB {hbAgo(a.last_heartbeat)}
+        <div className="text-dim text-[10px] mt-0.5 tracking-[0.06em]">
+          <span className="uppercase">{a.type}</span> · HB {hbAgo(a.last_heartbeat)}
         </div>
       </div>
 
@@ -147,13 +147,7 @@ function StatusRow({
         <Stat
           label="Σ R"
           value={fmtR(a.stats_today.r_sum)}
-          tone={
-            a.stats_today.r_sum > 0
-              ? "green"
-              : a.stats_today.r_sum < 0
-                ? "red"
-                : "default"
-          }
+          tone={a.stats_today.r_sum >= 0 ? "green" : "red"}
         />
       </div>
 
@@ -188,11 +182,7 @@ function Stat({
   tone?: "default" | "green" | "red";
 }) {
   const cls =
-    tone === "green"
-      ? "text-green"
-      : tone === "red"
-        ? "text-red"
-        : "text-bright";
+    tone === "green" ? "text-green" : tone === "red" ? "text-red" : "text-text";
   return (
     <div className="text-right">
       <div className="text-[9px] tracking-[0.1em] text-dim uppercase">{label}</div>

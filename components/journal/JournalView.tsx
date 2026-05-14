@@ -254,7 +254,7 @@ export function JournalView() {
                       </span>
                     </Td>
                     <Td>
-                      <span className="text-text uppercase tracking-[0.04em]">
+                      <span className="text-text">
                         {algoNameMap[a.algorithm_id] || a.algorithm_id.slice(0, 8)}
                       </span>
                     </Td>

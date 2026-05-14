@@ -51,7 +51,7 @@ export function SessionInline({ session }: { session: SessionState | null }) {
   if (session.active) {
     return (
       <span className="text-green text-[10px] tracking-[0.06em]">
-        ☼ {labelFor(session.name)}
+        ☼ {labelFor(session.name)} SESSION
       </span>
     );
   }

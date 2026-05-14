@@ -159,7 +159,7 @@ export function HeartbeatStream() {
                 className="px-[18px] py-1.5 flex items-center gap-3.5 border-b border-bg-el-2 text-[11px]"
               >
                 <span className="w-14 flex-shrink-0 text-dim">{r.ts}</span>
-                <span className="w-32 flex-shrink-0 text-text text-[10px] truncate uppercase tracking-[0.04em]">
+                <span className="w-32 flex-shrink-0 text-text text-[10px] truncate">
                   {r.algo}
                 </span>
                 <span

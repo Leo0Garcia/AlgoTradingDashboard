@@ -33,7 +33,7 @@ export function EquityMini() {
   });
 
   const total = points.length ? points[points.length - 1].cumulative : 0;
-  const sign = total > 0 ? "+" : "";
+  const sign = total >= 0 ? "+" : "";
 
   return (
     <Card>
