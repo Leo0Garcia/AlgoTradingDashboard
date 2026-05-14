@@ -81,6 +81,75 @@ describe("repo", () => {
     expect(curve[0].cumulative).toBeCloseTo(1.3);
   });
 
+  it("upserts mutable metadata when re-registering an existing name", async () => {
+    const repo = await import("@/lib/repo");
+    const r1 = repo.registerAlgorithm({
+      name: "upsert-target",
+      type: "hybrid",
+      symbols: ["MNQ1!"],
+    });
+    expect(r1.created).toBe(true);
+    expect(r1.algorithm.launch_cmd).toBeNull();
+
+    // Second registration adds launch_cmd + new symbols and a description.
+    const r2 = repo.registerAlgorithm({
+      name: "upsert-target",
+      type: "hybrid",
+      symbols: ["MNQ1!", "MES1!"],
+      launch_cmd: "uv run python -m trading_agent.live_hybrid -v",
+      description: "TJR + LLM",
+    });
+    expect(r2.created).toBe(false);
+    expect(r2.algorithm.id).toBe(r1.algorithm.id);
+    expect(r2.algorithm.api_token).toBe(r1.algorithm.api_token);
+    expect(r2.algorithm.launch_cmd).toBe("uv run python -m trading_agent.live_hybrid -v");
+    expect(r2.algorithm.symbols).toEqual(["MNQ1!", "MES1!"]);
+    expect(r2.algorithm.description).toBe("TJR + LLM");
+  });
+
+  it("captures pid from heartbeat and preserves it across pid-less heartbeats", async () => {
+    const repo = await import("@/lib/repo");
+    const { algorithm } = repo.registerAlgorithm({ name: "boot-pid", type: "hybrid" });
+    const bootHb = {
+      symbols: { "MNQ1!": { status: "booting", pid: 41013 } },
+      ts: new Date().toISOString(),
+    };
+    expect(repo.pidFromHeartbeat(bootHb)).toBe(41013);
+    repo.updateAlgorithmHeartbeat(algorithm.id, new Date().toISOString(), 41013);
+    let row = repo.getAlgorithm(algorithm.id);
+    expect(row?.pid).toBe(41013);
+    expect(row?.status).toBe("running");
+
+    // Subsequent heartbeat without pid must NOT clear the stored pid
+    repo.updateAlgorithmHeartbeat(algorithm.id, new Date().toISOString(), null);
+    row = repo.getAlgorithm(algorithm.id);
+    expect(row?.pid).toBe(41013);
+  });
+
+  it("marks running algorithms stopped when heartbeat is stale and pid is dead", async () => {
+    const repo = await import("@/lib/repo");
+    const { algorithm } = repo.registerAlgorithm({ name: "stale", type: "rules" });
+    const sixMinAgo = new Date(Date.now() - 6 * 60 * 1000).toISOString();
+    repo.updateAlgorithmHeartbeat(algorithm.id, sixMinAgo, 999999);
+    let row = repo.getAlgorithm(algorithm.id);
+    expect(row?.status).toBe("running");
+
+    repo.markStaleAlgorithms();
+    row = repo.getAlgorithm(algorithm.id);
+    expect(row?.status).toBe("stopped");
+    expect(row?.pid).toBeNull();
+  });
+
+  it("keeps a running algorithm running when its pid is still alive (own process)", async () => {
+    const repo = await import("@/lib/repo");
+    const { algorithm } = repo.registerAlgorithm({ name: "live-pid", type: "rules" });
+    const sixMinAgo = new Date(Date.now() - 6 * 60 * 1000).toISOString();
+    repo.updateAlgorithmHeartbeat(algorithm.id, sixMinAgo, process.pid);
+    repo.markStaleAlgorithms();
+    const row = repo.getAlgorithm(algorithm.id);
+    expect(row?.status).toBe("running");
+  });
+
   it("updates algorithm fields via patch semantics", async () => {
     const repo = await import("@/lib/repo");
     const { algorithm } = repo.registerAlgorithm({ name: "to-edit", type: "rules" });

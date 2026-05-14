@@ -6,7 +6,9 @@ import {
   heartbeatPayloadFor,
   updateAlgorithm,
   deleteAlgorithm,
+  markStaleAlgorithms,
 } from "@/lib/repo";
+import { authenticateAlgorithm } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -24,6 +26,7 @@ const PatchBody = z.object({
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  markStaleAlgorithms();
   const algo = getAlgorithm(id);
   if (!algo) return NextResponse.json({ error: "not found" }, { status: 404 });
   const since = new Date();
@@ -37,6 +40,15 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  // Hybrid auth: if a bearer token is supplied it must match this algorithm
+  // (so an algorithm can self-edit remotely). When no token is supplied we
+  // allow the request through — this is the localhost browser admin path,
+  // per the "no auth on the browser side" rule.
+  const hasAuth = req.headers.get("authorization") || req.headers.get("Authorization");
+  if (hasAuth) {
+    const auth = authenticateAlgorithm(req, id);
+    if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  }
   let json: unknown;
   try {
     json = await req.json();

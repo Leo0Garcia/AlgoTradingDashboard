@@ -54,11 +54,14 @@ All endpoints are versioned under `/api/v1`. Algorithm-facing endpoints require
 
 | Method | Path | Auth | Purpose |
 | ---- | ---- | ---- | ---- |
-| POST | `/algorithms/register` | – | Register algorithm (idempotent on `name`) |
-| POST | `/algorithms/:id/heartbeat` | algorithm | Tick |
+| POST | `/algorithms/register` | – | Register; if `name` exists, **upserts** mutable metadata (`type`, `description`, `symbols`, `db_path`, `launch_cmd`, `account_id`) and returns the existing id + token |
+| PATCH | `/algorithms/:id` | optional bearer | Update any subset of mutable fields. Browser may call without auth (localhost); algorithms calling remotely must supply their bearer token |
+| DELETE | `/algorithms/:id` | – | Delete with cascade to events + alerts |
+| POST | `/algorithms/:id/token` | – | Regenerate bearer token |
+| POST | `/algorithms/:id/heartbeat` | algorithm | Tick. If the body's `symbols.*.pid` is set, the dashboard records it and uses it for stale detection |
 | POST | `/algorithms/:id/events` | algorithm | Push event |
 | POST | `/algorithms/:id/control` | – | `{action: "start" \| "stop"}` |
-| GET  | `/algorithms` | – | List with today's stats |
+| GET  | `/algorithms` | – | List with today's stats. Also flips `running → stopped` for any algo with a stale heartbeat (>5min) whose pid is no longer alive |
 | GET  | `/algorithms/:id` | – | Detail + latest heartbeat |
 | GET  | `/alerts` | – | Query alerts |
 | GET  | `/alerts/:id` | – | Single alert |
@@ -68,6 +71,7 @@ All endpoints are versioned under `/api/v1`. Algorithm-facing endpoints require
 | GET/POST | `/accounts` | – | Account registry (mostly stubbed in v1) |
 | GET/POST | `/telegram/subscribers` | – | Subscriber registry |
 | GET  | `/telegram/test` | – | Send test message |
+| GET  | `/telegram/whoami` | – | Discover chat IDs by reading the bot's recent updates |
 
 ## Layout
 

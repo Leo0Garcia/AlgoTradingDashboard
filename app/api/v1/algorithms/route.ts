@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { listAlgorithms, algorithmStats } from "@/lib/repo";
+import { listAlgorithms, algorithmStats, markStaleAlgorithms } from "@/lib/repo";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -11,6 +11,7 @@ function todayStartIso(): string {
 }
 
 export async function GET() {
+  markStaleAlgorithms();
   const since = todayStartIso();
   const algos = listAlgorithms().map((a) => {
     const stats = algorithmStats(a.id, since);

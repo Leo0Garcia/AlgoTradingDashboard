@@ -109,9 +109,46 @@ export function registerAlgorithm(input: {
   const existing = db
     .prepare("SELECT * FROM algorithms WHERE name = ?")
     .get(input.name) as Row | undefined;
+
   if (existing) {
-    return { algorithm: mapAlgorithm(existing), created: false };
+    // Upsert mutable metadata on re-registration. id and api_token are stable.
+    // Only overwrite fields explicitly provided in the request body.
+    const sets: string[] = [];
+    const params: unknown[] = [];
+    if (input.type !== undefined) {
+      sets.push("type = ?");
+      params.push(input.type);
+    }
+    if (input.description !== undefined) {
+      sets.push("description = ?");
+      params.push(input.description);
+    }
+    if (input.symbols !== undefined) {
+      sets.push("symbols = ?");
+      params.push(JSON.stringify(input.symbols));
+    }
+    if (input.db_path !== undefined) {
+      sets.push("db_path = ?");
+      params.push(input.db_path);
+    }
+    if (input.launch_cmd !== undefined) {
+      sets.push("launch_cmd = ?");
+      params.push(input.launch_cmd);
+    }
+    if (input.account_id !== undefined) {
+      sets.push("account_id = ?");
+      params.push(input.account_id);
+    }
+    if (sets.length > 0) {
+      sets.push("updated_at = ?");
+      params.push(nowIso());
+      params.push(existing.id);
+      db.prepare(`UPDATE algorithms SET ${sets.join(", ")} WHERE id = ?`).run(...params);
+    }
+    const row = db.prepare("SELECT * FROM algorithms WHERE id = ?").get(existing.id) as Row;
+    return { algorithm: mapAlgorithm(row), created: false };
   }
+
   const id = `alg_${nanoid(20)}`;
   const token = `tok_${nanoid(40)}`;
   const ts = nowIso();
@@ -159,11 +196,76 @@ export function getAlgorithmByToken(token: string): Algorithm | null {
   return r ? mapAlgorithm(r) : null;
 }
 
-export function updateAlgorithmHeartbeat(id: string, ts: string): void {
+export function updateAlgorithmHeartbeat(
+  id: string,
+  ts: string,
+  pid?: number | null,
+): void {
   const db = getDb();
+  // COALESCE on pid: only overwrite if the heartbeat included one
   db.prepare(
-    "UPDATE algorithms SET last_heartbeat = ?, status = 'running', updated_at = ? WHERE id = ?",
-  ).run(ts, nowIso(), id);
+    `UPDATE algorithms
+     SET last_heartbeat = ?,
+         status = 'running',
+         pid = COALESCE(?, pid),
+         updated_at = ?
+     WHERE id = ?`,
+  ).run(ts, pid ?? null, nowIso(), id);
+}
+
+/**
+ * Extract a process id from a heartbeat payload's symbols map.
+ * Algorithms attach their PID to every symbol entry (all the same value);
+ * we just pick the first one we find.
+ */
+export function pidFromHeartbeat(payload: unknown): number | null {
+  if (!payload || typeof payload !== "object") return null;
+  const symbols = (payload as { symbols?: Record<string, unknown> }).symbols;
+  if (!symbols || typeof symbols !== "object") return null;
+  for (const v of Object.values(symbols)) {
+    if (v && typeof v === "object" && "pid" in v) {
+      const pid = (v as { pid?: unknown }).pid;
+      if (typeof pid === "number" && Number.isFinite(pid)) return pid;
+    }
+  }
+  return null;
+}
+
+const STALE_HEARTBEAT_MS = 5 * 60 * 1000; // 5 minutes
+
+function pidIsAlive(pid: number | null | undefined): boolean {
+  if (!pid) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Mark any algorithm whose status is 'running' but whose heartbeat is stale
+ * and whose recorded pid is no longer alive as 'stopped'. Cheap to call on
+ * every read of the algorithms list.
+ */
+export function markStaleAlgorithms(): void {
+  const db = getDb();
+  const rows = db
+    .prepare("SELECT id, last_heartbeat, pid FROM algorithms WHERE status = 'running'")
+    .all() as { id: string; last_heartbeat: string | null; pid: number | null }[];
+  const now = Date.now();
+  for (const r of rows) {
+    const ts = r.last_heartbeat ? new Date(r.last_heartbeat).getTime() : 0;
+    const stale = !ts || now - ts > STALE_HEARTBEAT_MS;
+    if (!stale) continue;
+    // Heartbeat is stale. If we know the pid and it's still alive, leave it
+    // alone (algorithm is paused/idle but the process exists). Otherwise mark
+    // it stopped.
+    if (r.pid && pidIsAlive(r.pid)) continue;
+    db.prepare(
+      "UPDATE algorithms SET status = 'stopped', pid = NULL, updated_at = ? WHERE id = ?",
+    ).run(nowIso(), r.id);
+  }
 }
 
 export function setAlgorithmStatus(

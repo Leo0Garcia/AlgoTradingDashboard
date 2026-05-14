@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateAlgorithm } from "@/lib/auth";
-import { insertEvent, updateAlgorithmHeartbeat } from "@/lib/repo";
+import { insertEvent, updateAlgorithmHeartbeat, pidFromHeartbeat } from "@/lib/repo";
 import { publishEvent } from "@/lib/sse";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +20,8 @@ export async function POST(
     return NextResponse.json({ error: "invalid json" }, { status: 400 });
   }
   const { received_at } = insertEvent(id, "heartbeat", body);
-  updateAlgorithmHeartbeat(id, received_at);
+  const pid = pidFromHeartbeat(body);
+  updateAlgorithmHeartbeat(id, received_at, pid);
   publishEvent({
     kind: "heartbeat",
     algorithm_id: id,
