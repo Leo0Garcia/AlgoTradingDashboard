@@ -20,6 +20,13 @@ export type EventType =
   | "error"
   | "heartbeat";
 
+export interface SessionState {
+  active: boolean;
+  name: string; // "london" | "ny" | "outside" | algorithm-defined
+  next_window_start_unix?: number | null;
+  next_window_name?: string | null;
+}
+
 export interface Algorithm {
   id: string;
   name: string;
@@ -34,6 +41,7 @@ export interface Algorithm {
   status: AlgorithmStatus;
   pid: number | null;
   last_heartbeat: string | null;
+  last_session: SessionState | null;
   created_at: string;
   updated_at: string;
 }
@@ -125,10 +133,12 @@ export interface HeartbeatPayload {
       status: string;
       last_bar_ts?: number;
       bias?: string;
+      pid?: number;
       [k: string]: unknown;
     }
   >;
   ts: string;
+  session?: SessionState;
 }
 
 export interface Account {

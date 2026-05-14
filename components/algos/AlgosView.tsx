@@ -9,6 +9,8 @@ import { Select } from "@/components/ui/select";
 import { fmtR, relativeTime } from "@/lib/utils";
 import { Play, Square, Send, Plus, Pencil, Trash2, KeyRound, Search, Info } from "lucide-react";
 import { Modal, ConfirmDialog } from "@/components/ui/modal";
+import { SessionBadge } from "@/components/dashboard/SessionBadge";
+import type { SessionState } from "@/lib/types";
 
 interface AlgorithmEntry {
   id: string;
@@ -22,6 +24,7 @@ interface AlgorithmEntry {
   db_path: string | null;
   enabled: boolean;
   account_id: string | null;
+  last_session: SessionState | null;
   stats_today: {
     total_alerts: number;
     approved_count: number;
@@ -158,6 +161,7 @@ export function AlgosView() {
                 <th className="text-left px-3 py-2">Name</th>
                 <th className="text-left px-3 py-2">Type</th>
                 <th className="text-left px-3 py-2">Status</th>
+                <th className="text-left px-3 py-2">Session</th>
                 <th className="text-left px-3 py-2">Heartbeat</th>
                 <th className="text-left px-3 py-2">Symbols</th>
                 <th className="text-right px-3 py-2">Alerts (today)</th>
@@ -182,6 +186,9 @@ export function AlgosView() {
                       <span className="text-zinc-300 capitalize">{a.status}</span>
                       {!a.enabled ? <Badge variant="amber">Disabled</Badge> : null}
                     </span>
+                  </td>
+                  <td className="px-3 py-2">
+                    <SessionBadge session={a.last_session} compact />
                   </td>
                   <td className="px-3 py-2 text-zinc-400">{relativeTime(a.last_heartbeat)}</td>
                   <td className="num px-3 py-2 text-zinc-300">{a.symbols.join(" · ")}</td>

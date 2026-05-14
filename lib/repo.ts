@@ -6,6 +6,7 @@ import type {
   AlertPayload,
   AlertStatus,
   HeartbeatPayload,
+  SessionState,
   TelegramSubscriber,
   Account,
 } from "./types";
@@ -36,6 +37,7 @@ function mapAlgorithm(r: Row): Algorithm {
     status: r.status as Algorithm["status"],
     pid: (r.pid as number) ?? null,
     last_heartbeat: (r.last_heartbeat as string) ?? null,
+    last_session: parseJSON<SessionState | null>(r.last_session, null),
     created_at: r.created_at as string,
     updated_at: r.updated_at as string,
   };
@@ -200,17 +202,37 @@ export function updateAlgorithmHeartbeat(
   id: string,
   ts: string,
   pid?: number | null,
+  session?: SessionState | null,
 ): void {
   const db = getDb();
-  // COALESCE on pid: only overwrite if the heartbeat included one
+  // COALESCE on pid: only overwrite if the heartbeat included one.
+  // last_session always replaced when provided; preserved otherwise.
+  const sessionJson = session ? JSON.stringify(session) : null;
   db.prepare(
     `UPDATE algorithms
      SET last_heartbeat = ?,
          status = 'running',
          pid = COALESCE(?, pid),
+         last_session = COALESCE(?, last_session),
          updated_at = ?
      WHERE id = ?`,
-  ).run(ts, pid ?? null, nowIso(), id);
+  ).run(ts, pid ?? null, sessionJson, nowIso(), id);
+}
+
+export function sessionFromHeartbeat(payload: unknown): SessionState | null {
+  if (!payload || typeof payload !== "object") return null;
+  const session = (payload as { session?: unknown }).session;
+  if (!session || typeof session !== "object") return null;
+  const s = session as Record<string, unknown>;
+  if (typeof s.active !== "boolean" || typeof s.name !== "string") return null;
+  const out: SessionState = { active: s.active, name: s.name };
+  if (typeof s.next_window_start_unix === "number") {
+    out.next_window_start_unix = s.next_window_start_unix;
+  }
+  if (typeof s.next_window_name === "string") {
+    out.next_window_name = s.next_window_name;
+  }
+  return out;
 }
 
 /**

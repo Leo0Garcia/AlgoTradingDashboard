@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS algorithms (
     status          TEXT NOT NULL DEFAULT 'stopped',
     pid             INTEGER,
     last_heartbeat  TEXT,
+    last_session    TEXT,
     created_at      TEXT NOT NULL,
     updated_at      TEXT NOT NULL
 );
@@ -97,9 +98,19 @@ export function getDb(): Database.Database {
   db.pragma("journal_mode = WAL");
   db.pragma("foreign_keys = ON");
   db.exec(SCHEMA);
+  runMigrations(db);
   seedTelegramFromEnv(db);
   _db = db;
   return db;
+}
+
+function runMigrations(db: Database.Database) {
+  // Idempotent column adds for older DBs that pre-date the column.
+  const cols = db.prepare("PRAGMA table_info(algorithms)").all() as { name: string }[];
+  const present = new Set(cols.map((c) => c.name));
+  if (!present.has("last_session")) {
+    db.exec("ALTER TABLE algorithms ADD COLUMN last_session TEXT");
+  }
 }
 
 function seedTelegramFromEnv(db: Database.Database) {

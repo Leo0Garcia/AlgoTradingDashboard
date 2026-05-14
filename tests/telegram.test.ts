@@ -16,6 +16,7 @@ const algo: Algorithm = {
   status: "running",
   pid: null,
   last_heartbeat: null,
+  last_session: null,
   created_at: "",
   updated_at: "",
 };

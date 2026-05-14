@@ -5,6 +5,8 @@ import { useStream } from "@/hooks/useStream";
 import { Button } from "@/components/ui/button";
 import { fmtR, relativeTime } from "@/lib/utils";
 import { Play, Square } from "lucide-react";
+import { SessionBadge, SessionBanner } from "./SessionBadge";
+import type { SessionState } from "@/lib/types";
 
 interface AlgorithmEntry {
   id: string;
@@ -12,6 +14,7 @@ interface AlgorithmEntry {
   type: string;
   status: "running" | "stopped" | "errored";
   last_heartbeat: string | null;
+  last_session: SessionState | null;
   symbols: string[];
   launch_cmd: string | null;
   stats_today: {
@@ -68,8 +71,20 @@ export function AlgoStatusBar() {
     );
   }
 
+  const pausedAlgos = algos.filter(
+    (a) => a.status === "running" && a.last_session && !a.last_session.active,
+  );
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+    <div className="space-y-3">
+      {pausedAlgos.length > 0 ? (
+        <div className="space-y-2">
+          {pausedAlgos.map((a) => (
+            <SessionBanner key={a.id} algoName={a.name} session={a.last_session} />
+          ))}
+        </div>
+      ) : null}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
       {algos.map((a) => (
         <div
           key={a.id}
@@ -111,6 +126,11 @@ export function AlgoStatusBar() {
               {a.symbols.join(" · ") || "—"}
             </span>
           </div>
+          {a.last_session ? (
+            <div className="mt-2">
+              <SessionBadge session={a.last_session} compact />
+            </div>
+          ) : null}
           <div className="mt-3 grid grid-cols-3 gap-2 text-center">
             <Stat label="Alerts" value={String(a.stats_today.total_alerts)} />
             <Stat
@@ -131,6 +151,7 @@ export function AlgoStatusBar() {
           </div>
         </div>
       ))}
+      </div>
     </div>
   );
 }

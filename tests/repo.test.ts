@@ -107,6 +107,63 @@ describe("repo", () => {
     expect(r2.algorithm.description).toBe("TJR + LLM");
   });
 
+  it("persists session state from heartbeat and preserves across session-less heartbeats", async () => {
+    const repo = await import("@/lib/repo");
+    const { algorithm } = repo.registerAlgorithm({ name: "session-target", type: "hybrid" });
+
+    const activeHb = {
+      symbols: { "MNQ1!": { status: "watching", pid: 41013 } },
+      ts: new Date().toISOString(),
+      session: { active: true, name: "london" },
+    };
+    expect(repo.sessionFromHeartbeat(activeHb)).toEqual({ active: true, name: "london" });
+    repo.updateAlgorithmHeartbeat(
+      algorithm.id,
+      new Date().toISOString(),
+      null,
+      repo.sessionFromHeartbeat(activeHb),
+    );
+    let row = repo.getAlgorithm(algorithm.id);
+    expect(row?.last_session?.active).toBe(true);
+    expect(row?.last_session?.name).toBe("london");
+
+    const outsideHb = {
+      symbols: { "MNQ1!": { status: "outside_session" } },
+      ts: new Date().toISOString(),
+      session: {
+        active: false,
+        name: "outside",
+        next_window_start_unix: 1778346000,
+        next_window_name: "ny",
+      },
+    };
+    repo.updateAlgorithmHeartbeat(
+      algorithm.id,
+      new Date().toISOString(),
+      null,
+      repo.sessionFromHeartbeat(outsideHb),
+    );
+    row = repo.getAlgorithm(algorithm.id);
+    expect(row?.last_session?.active).toBe(false);
+    expect(row?.last_session?.name).toBe("outside");
+    expect(row?.last_session?.next_window_start_unix).toBe(1778346000);
+    expect(row?.last_session?.next_window_name).toBe("ny");
+
+    // Heartbeat without a session payload must not clear the persisted state.
+    repo.updateAlgorithmHeartbeat(algorithm.id, new Date().toISOString(), null, null);
+    row = repo.getAlgorithm(algorithm.id);
+    expect(row?.last_session?.active).toBe(false);
+    expect(row?.last_session?.next_window_start_unix).toBe(1778346000);
+  });
+
+  it("rejects malformed session payloads", async () => {
+    const repo = await import("@/lib/repo");
+    expect(repo.sessionFromHeartbeat({ session: null })).toBeNull();
+    expect(repo.sessionFromHeartbeat({ session: { active: "yes" } })).toBeNull();
+    expect(repo.sessionFromHeartbeat({ session: { active: true } })).toBeNull();
+    expect(repo.sessionFromHeartbeat({})).toBeNull();
+  });
+
   it("captures pid from heartbeat and preserves it across pid-less heartbeats", async () => {
     const repo = await import("@/lib/repo");
     const { algorithm } = repo.registerAlgorithm({ name: "boot-pid", type: "hybrid" });
