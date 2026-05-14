@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { fmtR, relativeTime } from "@/lib/utils";
-import { Play, Square, Send, Plus, Pencil, Trash2, KeyRound } from "lucide-react";
+import { Play, Square, Send, Plus, Pencil, Trash2, KeyRound, Search, Info } from "lucide-react";
+import { Modal, ConfirmDialog } from "@/components/ui/modal";
 
 interface AlgorithmEntry {
   id: string;
@@ -37,6 +38,24 @@ interface Subscriber {
   enabled: boolean;
 }
 
+interface TelegramTestResult {
+  chat_id: string;
+  ok: boolean;
+  status?: number;
+  description?: string;
+  hint?: string;
+}
+
+interface DiscoveredChat {
+  chat_id: string;
+  type: string;
+  title: string;
+}
+
+type DiscoverResult =
+  | { ok: true; chats: DiscoveredChat[] }
+  | { ok: false; description: string; hint?: string };
+
 export function AlgosView() {
   const [algos, setAlgos] = useState<AlgorithmEntry[]>([]);
   const [subs, setSubs] = useState<Subscriber[]>([]);
@@ -47,6 +66,10 @@ export function AlgosView() {
     algorithm_id: string;
     api_token: string;
   } | null>(null);
+  const [telegramResult, setTelegramResult] = useState<TelegramTestResult[] | null>(null);
+  const [discovering, setDiscovering] = useState(false);
+  const [discovered, setDiscovered] = useState<DiscoverResult | null>(null);
+  const [regenTarget, setRegenTarget] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const [a, s] = await Promise.all([
@@ -71,18 +94,34 @@ export function AlgosView() {
   };
 
   const testTelegram = async () => {
+    setTelegramResult(null);
     const r = await fetch("/api/v1/telegram/test");
     const j = await r.json();
-    alert(JSON.stringify(j, null, 2));
+    setTelegramResult(j.results ?? []);
+  };
+
+  const findChatId = async () => {
+    setDiscovering(true);
+    setDiscovered(null);
+    try {
+      const r = await fetch("/api/v1/telegram/whoami");
+      const j = (await r.json()) as DiscoverResult;
+      setDiscovered(j);
+    } finally {
+      setDiscovering(false);
+    }
+  };
+
+  const addDiscoveredSubscriber = async (chat: DiscoveredChat) => {
+    await fetch("/api/v1/telegram/subscribers", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ chat_id: chat.chat_id, name: chat.title }),
+    });
+    load();
   };
 
   const regenToken = async (id: string) => {
-    if (
-      !confirm(
-        "Regenerate API token? The existing token will stop working immediately. Make sure to update the algorithm's env afterwards.",
-      )
-    )
-      return;
     const r = await fetch(`/api/v1/algorithms/${id}/token`, { method: "POST" });
     const j = await r.json();
     setRevealedToken(j);
@@ -187,7 +226,7 @@ export function AlgosView() {
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => regenToken(a.id)}
+                        onClick={() => setRegenTarget(a.id)}
                         title="regenerate token"
                       >
                         <KeyRound className="h-3 w-3" />
@@ -220,11 +259,61 @@ export function AlgosView() {
           title="Telegram subscribers"
           subtitle="chats that receive approved alerts"
           right={
-            <Button size="sm" variant="outline" onClick={testTelegram}>
-              <Send className="h-3 w-3" /> send test
-            </Button>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={findChatId} disabled={discovering}>
+                <Search className="h-3 w-3" /> {discovering ? "looking…" : "find my chat ID"}
+              </Button>
+              <Button size="sm" variant="outline" onClick={testTelegram}>
+                <Send className="h-3 w-3" /> send test
+              </Button>
+            </div>
           }
         />
+        <div className="px-4 py-3 border-b border-zinc-800 text-xs text-zinc-400 flex items-start gap-2 bg-zinc-900/30">
+          <Info className="h-3.5 w-3.5 text-blue-400 shrink-0 mt-0.5" />
+          <div className="leading-relaxed">
+            <span className="text-zinc-200 font-medium">First time?</span> Telegram bots can&apos;t DM
+            you until you message them at least once. Open Telegram, find your bot, press{" "}
+            <span className="text-zinc-200">Start</span> (or send <code className="num">hi</code>),
+            then click <span className="text-zinc-200">find my chat ID</span> to discover it
+            automatically.
+          </div>
+        </div>
+        {telegramResult ? (
+          <div className="px-4 py-3 border-b border-zinc-800 space-y-2">
+            {telegramResult.map((r) => (
+              <div
+                key={r.chat_id}
+                className={`text-xs rounded-md border p-2.5 ${
+                  r.ok
+                    ? "border-green-500/20 bg-green-500/5"
+                    : "border-red-500/20 bg-red-500/5"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Badge variant={r.ok ? "green" : "red"}>{r.ok ? "delivered" : "failed"}</Badge>
+                  <span className="num text-zinc-300">{r.chat_id}</span>
+                  {r.status ? <span className="text-zinc-500">HTTP {r.status}</span> : null}
+                </div>
+                {r.description ? (
+                  <div className="mt-1.5 text-zinc-300">{r.description}</div>
+                ) : null}
+                {r.hint ? (
+                  <div className="mt-1.5 text-zinc-400 leading-relaxed">
+                    💡 {r.hint}
+                  </div>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        ) : null}
+        {discovered ? (
+          <ChatDiscoveryPanel
+            result={discovered}
+            onAdd={addDiscoveredSubscriber}
+            onClose={() => setDiscovered(null)}
+          />
+        ) : null}
         <SubscriberForm onAdded={load} />
         <div className="overflow-auto">
           <table className="w-full text-xs">
@@ -280,6 +369,31 @@ export function AlgosView() {
       />
 
       <TokenModal token={revealedToken} onClose={() => setRevealedToken(null)} />
+
+      <ConfirmDialog
+        open={regenTarget !== null}
+        title="Regenerate API token"
+        message={
+          <div className="space-y-2">
+            <p>
+              The existing bearer token will stop working{" "}
+              <span className="text-zinc-100 font-medium">immediately</span>. You&apos;ll need to
+              update the algorithm&apos;s environment with the new value before it can talk to the
+              dashboard again.
+            </p>
+            <p className="text-zinc-500 text-xs">
+              The new token will be shown once — make sure to copy it before closing the reveal.
+            </p>
+          </div>
+        }
+        confirmLabel="regenerate"
+        tone="danger"
+        onCancel={() => setRegenTarget(null)}
+        onConfirm={() => {
+          if (regenTarget) regenToken(regenTarget);
+          setRegenTarget(null);
+        }}
+      />
     </div>
   );
 }
@@ -438,7 +552,7 @@ function EditModal({
   };
 
   return (
-    <ModalShell title={`Edit · ${algo.name}`} onClose={onClose}>
+    <Modal title={`Edit · ${algo.name}`} onClose={onClose}>
       <div className="space-y-3">
         <Field label="name">
           <Input value={name} onChange={(e) => setName(e.target.value)} />
@@ -492,7 +606,7 @@ function EditModal({
           save
         </Button>
       </div>
-    </ModalShell>
+    </Modal>
   );
 }
 
@@ -535,7 +649,7 @@ function DeleteModal({
   const canDelete = confirmName === algo.name;
 
   return (
-    <ModalShell title="Delete algorithm" onClose={onClose}>
+    <Modal title="Delete algorithm" onClose={onClose}>
       <div className="space-y-3 text-sm">
         <p className="text-zinc-300">
           This permanently deletes <span className="text-zinc-100 font-semibold">{algo.name}</span>{" "}
@@ -569,7 +683,7 @@ function DeleteModal({
           <Trash2 className="h-3 w-3" /> delete
         </Button>
       </div>
-    </ModalShell>
+    </Modal>
   );
 }
 
@@ -582,7 +696,7 @@ function TokenModal({
 }) {
   if (!token) return null;
   return (
-    <ModalShell title="API token" onClose={onClose}>
+    <Modal title="API token" onClose={onClose}>
       <div className="space-y-3 text-sm">
         <p className="text-zinc-400">
           Copy this now — for security, the token is shown only once.
@@ -606,32 +720,62 @@ function TokenModal({
           done
         </Button>
       </div>
-    </ModalShell>
+    </Modal>
   );
 }
 
-function ModalShell({
-  title,
-  children,
+function ChatDiscoveryPanel({
+  result,
+  onAdd,
   onClose,
 }: {
-  title: string;
-  children: React.ReactNode;
+  result: DiscoverResult;
+  onAdd: (chat: DiscoveredChat) => void;
   onClose: () => void;
 }) {
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div className="w-full max-w-md rounded-lg border border-zinc-800 bg-zinc-950 shadow-xl">
-        <div className="px-4 py-3 border-b border-zinc-800 text-sm font-semibold text-zinc-100">
-          {title}
-        </div>
-        <div className="p-4">{children}</div>
+    <div className="px-4 py-3 border-b border-zinc-800 bg-zinc-950/40">
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-xs text-zinc-300 font-medium">Discovered chats</div>
+        <Button size="sm" variant="ghost" onClick={onClose}>
+          dismiss
+        </Button>
       </div>
+      {!result.ok ? (
+        <div className="text-xs rounded-md border border-red-500/20 bg-red-500/5 p-2.5">
+          <div className="text-zinc-200">{result.description}</div>
+          {result.hint ? (
+            <div className="mt-1.5 text-zinc-400">💡 {result.hint}</div>
+          ) : null}
+        </div>
+      ) : result.chats.length === 0 ? (
+        <div className="text-xs rounded-md border border-amber-500/20 bg-amber-500/5 p-2.5 text-zinc-300 leading-relaxed">
+          No chats found yet. To register one:
+          <ol className="list-decimal pl-5 mt-1.5 space-y-0.5 text-zinc-400">
+            <li>Open Telegram and find your bot (the one whose token is in <code className="num">.env.local</code>).</li>
+            <li>Press <span className="text-zinc-200">Start</span> or send it any message like <code className="num">hi</code>.</li>
+            <li>Click <span className="text-zinc-200">find my chat ID</span> again here.</li>
+          </ol>
+        </div>
+      ) : (
+        <div className="space-y-1.5">
+          {result.chats.map((c) => (
+            <div
+              key={c.chat_id}
+              className="flex items-center justify-between text-xs rounded-md border border-zinc-800 bg-zinc-900/60 p-2.5"
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <Badge variant="muted">{c.type}</Badge>
+                <span className="text-zinc-100 truncate">{c.title}</span>
+                <span className="num text-zinc-500">{c.chat_id}</span>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => onAdd(c)}>
+                <Plus className="h-3 w-3" /> add
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
