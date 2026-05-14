@@ -605,6 +605,24 @@ export function activeSubscribersFor(algorithm_id: string): TelegramSubscriber[]
   });
 }
 
+export function deleteSubscriber(id: number): boolean {
+  const db = getDb();
+  const info = db.prepare("DELETE FROM telegram_subscribers WHERE id = ?").run(id);
+  return info.changes > 0;
+}
+
+export function setSubscriberEnabled(id: number, enabled: boolean): TelegramSubscriber | null {
+  const db = getDb();
+  const info = db
+    .prepare("UPDATE telegram_subscribers SET enabled = ? WHERE id = ?")
+    .run(enabled ? 1 : 0, id);
+  if (info.changes === 0) return null;
+  const row = db
+    .prepare("SELECT * FROM telegram_subscribers WHERE id = ?")
+    .get(id) as Row;
+  return mapSubscriber(row);
+}
+
 export function addSubscriber(chat_id: string, name?: string): TelegramSubscriber {
   const db = getDb();
   const existing = db

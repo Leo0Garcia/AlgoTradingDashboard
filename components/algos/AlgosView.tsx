@@ -80,6 +80,7 @@ export function AlgosView() {
   const [discovering, setDiscovering] = useState(false);
   const [discovered, setDiscovered] = useState<DiscoverResult | null>(null);
   const [regenTarget, setRegenTarget] = useState<string | null>(null);
+  const [subDeleteTarget, setSubDeleteTarget] = useState<Subscriber | null>(null);
 
   const load = useCallback(async () => {
     const [a, s] = await Promise.all([
@@ -137,6 +138,20 @@ export function AlgosView() {
     const r = await fetch(`/api/v1/algorithms/${id}/token`, { method: "POST" });
     const j = await r.json();
     setRevealedToken(j);
+  };
+
+  const deleteSubscriber = async (id: number) => {
+    await fetch(`/api/v1/telegram/subscribers/${id}`, { method: "DELETE" });
+    load();
+  };
+
+  const toggleSubscriber = async (s: Subscriber) => {
+    await fetch(`/api/v1/telegram/subscribers/${s.id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ enabled: !s.enabled }),
+    });
+    load();
   };
 
   const editing = algos.find((a) => a.id === editingId) ?? null;
@@ -363,12 +378,13 @@ export function AlgosView() {
                 <Th>NAME</Th>
                 <Th>STATUS</Th>
                 <Th>FILTER</Th>
+                <Th right>ACTIONS</Th>
               </tr>
             </thead>
             <tbody>
               {subs.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-10 py-8 text-center text-[11px] text-dim">
+                  <td colSpan={5} className="px-10 py-8 text-center text-[11px] text-dim">
                     NO_TELEGRAM_CHATS
                   </td>
                 </tr>
@@ -382,16 +398,28 @@ export function AlgosView() {
                       <span className="text-bright font-medium">{s.name ?? "—"}</span>
                     </Td>
                     <Td>
-                      <span
-                        className={`text-[10px] tracking-[0.06em] ${
+                      <button
+                        onClick={() => toggleSubscriber(s)}
+                        className={`text-[10px] tracking-[0.06em] cursor-pointer hover:text-bright transition-colors ${
                           s.enabled ? "text-green" : "text-dim"
                         }`}
+                        title={s.enabled ? "Click to pause" : "Click to enable"}
                       >
                         {s.enabled ? "● ACTIVE" : "○ INACTIVE"}
-                      </span>
+                      </button>
                     </Td>
                     <Td>
                       <span className="text-dim">All algorithms</span>
+                    </Td>
+                    <Td right>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setSubDeleteTarget(s)}
+                        className="!text-red hover:!border-[rgba(255,82,82,0.3)]"
+                      >
+                        REMOVE
+                      </Button>
                     </Td>
                   </tr>
                 ))
@@ -420,6 +448,32 @@ export function AlgosView() {
       />
 
       <TokenModal token={revealedToken} onClose={() => setRevealedToken(null)} />
+
+      <ConfirmDialog
+        open={subDeleteTarget !== null}
+        title="Remove Telegram subscriber"
+        message={
+          <div className="space-y-2">
+            <p>
+              Remove{" "}
+              <span className="text-bright">
+                {subDeleteTarget?.name ?? subDeleteTarget?.chat_id}
+              </span>{" "}
+              from this dashboard? They will stop receiving alerts immediately.
+            </p>
+            <p className="text-dim text-[11px]">
+              You can re-add the chat ID later from this same screen.
+            </p>
+          </div>
+        }
+        confirmLabel="REMOVE"
+        tone="danger"
+        onCancel={() => setSubDeleteTarget(null)}
+        onConfirm={() => {
+          if (subDeleteTarget) deleteSubscriber(subDeleteTarget.id);
+          setSubDeleteTarget(null);
+        }}
+      />
 
       <ConfirmDialog
         open={regenTarget !== null}
