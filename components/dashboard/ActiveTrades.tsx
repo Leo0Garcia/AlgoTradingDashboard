@@ -38,7 +38,7 @@ export function ActiveTrades() {
     <Card>
       <CardHeader
         title="Active trades"
-        subtitle="positions currently in market"
+        subtitle="Positions currently in market"
         right={<Badge variant="muted">{trades.length}</Badge>}
       />
       <div className="max-h-[640px] overflow-auto">
@@ -59,14 +59,14 @@ export function ActiveTrades() {
                   <Badge variant="blue">{t.status}</Badge>
                 </div>
                 <div className="mt-2 grid grid-cols-4 gap-2 text-[11px]">
-                  <Cell label="fill" value={fmtNum(t.fill_px)} tone="default" />
-                  <Cell label="stop" value={fmtNum(t.stop)} tone="red" />
-                  <Cell label="tp1" value={fmtNum(t.tp1)} tone="green" />
-                  <Cell label="tp2" value={fmtNum(t.tp2)} tone="green" />
+                  <Cell label="Fill" value={fmtNum(t.fill_px)} tone="default" />
+                  <Cell label="Stop" value={fmtNum(t.stop)} tone="red" />
+                  <Cell label="TP1" value={fmtNum(t.tp1)} tone="green" />
+                  <Cell label="TP2" value={fmtNum(t.tp2)} tone="green" />
                 </div>
                 <div className="mt-2 text-[11px] text-zinc-500 flex items-center justify-between">
-                  <span>filled {fmtTime(t.fill_ts)}</span>
-                  <span>since {relativeTime(t.fill_ts ?? t.received_at)}</span>
+                  <span>Filled {fmtTime(t.fill_ts)}</span>
+                  <span>{relativeTime(t.fill_ts ?? t.received_at)}</span>
                 </div>
               </li>
             ))}

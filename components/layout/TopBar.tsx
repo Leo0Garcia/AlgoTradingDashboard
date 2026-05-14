@@ -19,10 +19,12 @@ export function TopBar() {
         <span
           className={`h-1.5 w-1.5 rounded-full ${connected ? "bg-green-500" : "bg-zinc-600"}`}
         />
-        {connected ? "stream live" : "stream offline"}
+        {connected ? "Stream live" : "Stream offline"}
       </span>
       {lastEventAt ? (
-        <span className="text-zinc-600">last: {new Date(lastEventAt).toLocaleTimeString()}</span>
+        <span className="text-zinc-600">
+          Last event {new Date(lastEventAt).toLocaleTimeString()}
+        </span>
       ) : null}
       <span className="num text-zinc-500">{time}</span>
     </div>

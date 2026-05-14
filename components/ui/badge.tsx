@@ -60,9 +60,20 @@ export function DirectionBadge({ dir }: { dir: string }) {
   );
 }
 
+const STATUS_LABELS: Record<string, string> = {
+  pending: "Pending",
+  filled: "Filled",
+  tp1: "TP1",
+  tp2: "TP2",
+  tp3: "TP3",
+  be_after_tp1: "Breakeven",
+  stopped: "Stopped",
+  expired: "Expired",
+};
+
 export function StatusBadge({ status }: { status: string }) {
   const win = ["tp1", "tp2", "tp3", "be_after_tp1"].includes(status);
   const lose = status === "stopped";
   const v: Variant = win ? "green" : lose ? "red" : status === "filled" ? "blue" : "muted";
-  return <Badge variant={v}>{status}</Badge>;
+  return <Badge variant={v}>{STATUS_LABELS[status] ?? status}</Badge>;
 }

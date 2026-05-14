@@ -75,20 +75,20 @@ function Content({
           <H>Algorithm</H>
           <div className="text-sm text-zinc-300">{algoName ?? alert.algorithm_id}</div>
           <div className="num text-xs text-zinc-500 mt-0.5">
-            ext_id {alert.external_id} · {fmtDateTime(alert.received_at)}
+            External ID {alert.external_id} · {fmtDateTime(alert.received_at)}
           </div>
         </section>
 
         <section className="grid grid-cols-4 gap-2">
-          <Stat label="entry" value={`${fmtNum(alert.entry_lo)} – ${fmtNum(alert.entry_hi)}`} />
-          <Stat label="stop" value={fmtNum(alert.stop)} tone="red" />
-          <Stat label="tp1" value={fmtNum(alert.tp1)} tone="green" />
-          <Stat label="tp2" value={fmtNum(alert.tp2)} tone="green" />
-          <Stat label="tp3" value={fmtNum(alert.tp3)} tone="green" />
-          <Stat label="fill" value={fmtNum(alert.fill_px)} />
-          <Stat label="exit" value={fmtNum(alert.exit_px)} />
+          <Stat label="Entry" value={`${fmtNum(alert.entry_lo)} – ${fmtNum(alert.entry_hi)}`} />
+          <Stat label="Stop" value={fmtNum(alert.stop)} tone="red" />
+          <Stat label="TP1" value={fmtNum(alert.tp1)} tone="green" />
+          <Stat label="TP2" value={fmtNum(alert.tp2)} tone="green" />
+          <Stat label="TP3" value={fmtNum(alert.tp3)} tone="green" />
+          <Stat label="Fill" value={fmtNum(alert.fill_px)} />
+          <Stat label="Exit" value={fmtNum(alert.exit_px)} />
           <Stat
-            label="R"
+            label="R outcome"
             value={alert.r_outcome == null ? "—" : `${alert.r_outcome.toFixed(2)}R`}
             tone={(alert.r_outcome ?? 0) >= 0 ? "green" : "red"}
           />
@@ -131,9 +131,11 @@ function Content({
                 <Badge
                   variant={alert.llm_decision.decision === "approve" ? "green" : "red"}
                 >
-                  {alert.llm_decision.decision}
+                  <span className="capitalize">{alert.llm_decision.decision}</span>
                 </Badge>
-                <Badge variant="muted">{alert.llm_decision.confidence}</Badge>
+                <Badge variant="muted">
+                  <span className="capitalize">{alert.llm_decision.confidence} confidence</span>
+                </Badge>
               </div>
               <div className="text-sm text-zinc-300 whitespace-pre-wrap">
                 {alert.llm_decision.reason}
@@ -145,10 +147,10 @@ function Content({
         <section>
           <H>Lifecycle</H>
           <div className="text-xs text-zinc-400 space-y-0.5">
-            <div>received {fmtDateTime(alert.received_at)}</div>
-            <div>filled {alert.fill_ts ? fmtDateTime(alert.fill_ts) : "—"}</div>
-            <div>exited {alert.exit_ts ? fmtDateTime(alert.exit_ts) : "—"}</div>
-            <div>outcome {fmtR(alert.r_outcome)}</div>
+            <div>Received {fmtDateTime(alert.received_at)}</div>
+            <div>Filled {alert.fill_ts ? fmtDateTime(alert.fill_ts) : "—"}</div>
+            <div>Exited {alert.exit_ts ? fmtDateTime(alert.exit_ts) : "—"}</div>
+            <div>Outcome {fmtR(alert.r_outcome)}</div>
           </div>
         </section>
       </div>

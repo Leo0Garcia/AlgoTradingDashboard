@@ -96,14 +96,14 @@ export function JournalView() {
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader title="Filters" subtitle="default: today" />
+        <CardHeader title="Filters" subtitle="Default: today" />
         <div className="p-4 flex flex-wrap gap-2 items-end">
-          <FilterField label="algo">
+          <FilterField label="Algorithm">
             <Select
               value={filters.algo}
               onChange={(e) => setFilters({ ...filters, algo: e.target.value })}
             >
-              <option value="">all</option>
+              <option value="">All</option>
               {algos.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.name}
@@ -111,70 +111,70 @@ export function JournalView() {
               ))}
             </Select>
           </FilterField>
-          <FilterField label="from">
+          <FilterField label="From">
             <Input
               type="datetime-local"
               value={filters.from}
               onChange={(e) => setFilters({ ...filters, from: e.target.value })}
             />
           </FilterField>
-          <FilterField label="to">
+          <FilterField label="To">
             <Input
               type="datetime-local"
               value={filters.to}
               onChange={(e) => setFilters({ ...filters, to: e.target.value })}
             />
           </FilterField>
-          <FilterField label="symbol">
+          <FilterField label="Symbol">
             <Input
               placeholder="MNQ1!"
               value={filters.symbol}
               onChange={(e) => setFilters({ ...filters, symbol: e.target.value })}
             />
           </FilterField>
-          <FilterField label="direction">
+          <FilterField label="Direction">
             <Select
               value={filters.direction}
               onChange={(e) => setFilters({ ...filters, direction: e.target.value })}
             >
-              <option value="">any</option>
-              <option value="long">long</option>
-              <option value="short">short</option>
+              <option value="">Any</option>
+              <option value="long">Long</option>
+              <option value="short">Short</option>
             </Select>
           </FilterField>
-          <FilterField label="grade">
+          <FilterField label="Grade">
             <Select
               value={filters.grade}
               onChange={(e) => setFilters({ ...filters, grade: e.target.value })}
             >
-              <option value="">any</option>
+              <option value="">Any</option>
               <option value="A+">A+</option>
               <option value="A">A</option>
               <option value="B">B</option>
             </Select>
           </FilterField>
-          <FilterField label="status">
+          <FilterField label="Status">
             <Select
               value={filters.status}
               onChange={(e) => setFilters({ ...filters, status: e.target.value })}
             >
-              <option value="">any</option>
-              <option value="pending">pending</option>
-              <option value="filled">filled</option>
-              <option value="tp1">tp1</option>
-              <option value="tp2">tp2</option>
-              <option value="tp3">tp3</option>
-              <option value="be_after_tp1">be_after_tp1</option>
-              <option value="stopped">stopped</option>
-              <option value="expired">expired</option>
+              <option value="">Any</option>
+              <option value="pending">Pending</option>
+              <option value="filled">Filled</option>
+              <option value="tp1">TP1</option>
+              <option value="tp2">TP2</option>
+              <option value="tp3">TP3</option>
+              <option value="be_after_tp1">Breakeven (after TP1)</option>
+              <option value="stopped">Stopped</option>
+              <option value="expired">Expired</option>
             </Select>
           </FilterField>
           <div className="ml-auto flex gap-2">
             <Button size="sm" variant="ghost" onClick={() => setFilters(emptyFilters())}>
-              reset
+              Reset
             </Button>
             <Button size="sm" variant="default" onClick={refresh}>
-              apply
+              Apply
             </Button>
           </div>
         </div>
@@ -194,17 +194,17 @@ export function JournalView() {
           <table className="w-full text-xs">
             <thead className="text-zinc-500 uppercase text-[10px] tracking-wider">
               <tr className="border-b border-zinc-800">
-                <Th>time</Th>
-                <Th>algo</Th>
-                <Th>symbol</Th>
-                <Th>dir</Th>
-                <Th>grade</Th>
-                <Th className="text-right">entry</Th>
-                <Th className="text-right">stop</Th>
-                <Th className="text-right">tp1</Th>
-                <Th className="text-right">tp2</Th>
-                <Th className="text-right">tp3</Th>
-                <Th>status</Th>
+                <Th>Time</Th>
+                <Th>Algorithm</Th>
+                <Th>Symbol</Th>
+                <Th>Dir</Th>
+                <Th>Grade</Th>
+                <Th className="text-right">Entry</Th>
+                <Th className="text-right">Stop</Th>
+                <Th className="text-right">TP1</Th>
+                <Th className="text-right">TP2</Th>
+                <Th className="text-right">TP3</Th>
+                <Th>Status</Th>
                 <Th className="text-right">R</Th>
               </tr>
             </thead>

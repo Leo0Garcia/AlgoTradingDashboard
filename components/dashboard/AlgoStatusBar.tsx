@@ -61,7 +61,8 @@ export function AlgoStatusBar() {
   if (algos.length === 0) {
     return (
       <div className="rounded-lg border border-dashed border-zinc-800 p-6 text-center text-sm text-zinc-500">
-        No algorithms registered yet. Register one via{" "}
+        No algorithms registered yet. Register one from the{" "}
+        <span className="text-zinc-300">Algorithms</span> tab, or via{" "}
         <code className="num text-zinc-400">POST /api/v1/algorithms/register</code>.
       </div>
     );
@@ -87,7 +88,7 @@ export function AlgoStatusBar() {
             <div>
               {a.status === "running" ? (
                 <Button size="sm" variant="danger" onClick={() => control(a.id, "stop")}>
-                  <Square className="h-3 w-3" /> stop
+                  <Square className="h-3 w-3" /> Stop
                 </Button>
               ) : (
                 <Button
@@ -95,29 +96,29 @@ export function AlgoStatusBar() {
                   variant="outline"
                   onClick={() => control(a.id, "start")}
                   disabled={!a.launch_cmd}
-                  title={a.launch_cmd ?? "no launch_cmd configured"}
+                  title={a.launch_cmd ?? "No launch command configured"}
                 >
-                  <Play className="h-3 w-3" /> start
+                  <Play className="h-3 w-3" /> Start
                 </Button>
               )}
             </div>
           </div>
           <div className="mt-3 flex items-center justify-between text-xs">
             <span className="text-zinc-500">
-              hb {relativeTime(a.last_heartbeat)}
+              Heartbeat {relativeTime(a.last_heartbeat)}
             </span>
             <span className="num text-zinc-400">
               {a.symbols.join(" · ") || "—"}
             </span>
           </div>
           <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-            <Stat label="alerts" value={String(a.stats_today.total_alerts)} />
+            <Stat label="Alerts" value={String(a.stats_today.total_alerts)} />
             <Stat
-              label="w/l"
-              value={`${a.stats_today.wins}/${a.stats_today.losses}`}
+              label="W / L"
+              value={`${a.stats_today.wins} / ${a.stats_today.losses}`}
             />
             <Stat
-              label="R"
+              label="R total"
               value={fmtR(a.stats_today.r_sum)}
               tone={
                 a.stats_today.r_sum > 0

@@ -135,10 +135,10 @@ export function AlgosView() {
       <Card>
         <CardHeader
           title="Algorithms"
-          subtitle="registered traders sending events to this dashboard"
+          subtitle="Registered traders sending events to this dashboard"
           right={
             <Button size="sm" variant="outline" onClick={() => setShowRegister((v) => !v)}>
-              <Plus className="h-3 w-3" /> register
+              <Plus className="h-3 w-3" /> Register
             </Button>
           }
         />
@@ -155,15 +155,15 @@ export function AlgosView() {
           <table className="w-full text-xs">
             <thead className="text-[10px] uppercase tracking-wider text-zinc-500">
               <tr className="border-b border-zinc-800">
-                <th className="text-left px-3 py-2">name</th>
-                <th className="text-left px-3 py-2">type</th>
-                <th className="text-left px-3 py-2">status</th>
-                <th className="text-left px-3 py-2">hb</th>
-                <th className="text-left px-3 py-2">symbols</th>
-                <th className="text-right px-3 py-2">alerts (today)</th>
-                <th className="text-right px-3 py-2">w/l</th>
+                <th className="text-left px-3 py-2">Name</th>
+                <th className="text-left px-3 py-2">Type</th>
+                <th className="text-left px-3 py-2">Status</th>
+                <th className="text-left px-3 py-2">Heartbeat</th>
+                <th className="text-left px-3 py-2">Symbols</th>
+                <th className="text-right px-3 py-2">Alerts (today)</th>
+                <th className="text-right px-3 py-2">W / L</th>
                 <th className="text-right px-3 py-2">Σ R</th>
-                <th className="text-right px-3 py-2">actions</th>
+                <th className="text-right px-3 py-2">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -179,8 +179,8 @@ export function AlgosView() {
                   <td className="px-3 py-2">
                     <span className="inline-flex items-center gap-1.5">
                       <span className={`pulse-dot ${a.status}`} />
-                      <span className="text-zinc-300">{a.status}</span>
-                      {!a.enabled ? <Badge variant="amber">disabled</Badge> : null}
+                      <span className="text-zinc-300 capitalize">{a.status}</span>
+                      {!a.enabled ? <Badge variant="amber">Disabled</Badge> : null}
                     </span>
                   </td>
                   <td className="px-3 py-2 text-zinc-400">{relativeTime(a.last_heartbeat)}</td>
@@ -202,7 +202,7 @@ export function AlgosView() {
                     <div className="inline-flex gap-1">
                       {a.status === "running" ? (
                         <Button size="sm" variant="danger" onClick={() => control(a.id, "stop")}>
-                          <Square className="h-3 w-3" /> stop
+                          <Square className="h-3 w-3" /> Stop
                         </Button>
                       ) : (
                         <Button
@@ -210,16 +210,16 @@ export function AlgosView() {
                           variant="outline"
                           onClick={() => control(a.id, "start")}
                           disabled={!a.launch_cmd}
-                          title={a.launch_cmd ?? "no launch_cmd configured"}
+                          title={a.launch_cmd ?? "No launch command configured"}
                         >
-                          <Play className="h-3 w-3" /> start
+                          <Play className="h-3 w-3" /> Start
                         </Button>
                       )}
                       <Button
                         size="sm"
                         variant="ghost"
                         onClick={() => setEditingId(a.id)}
-                        title="edit"
+                        title="Edit"
                       >
                         <Pencil className="h-3 w-3" />
                       </Button>
@@ -227,7 +227,7 @@ export function AlgosView() {
                         size="sm"
                         variant="ghost"
                         onClick={() => setRegenTarget(a.id)}
-                        title="regenerate token"
+                        title="Regenerate API token"
                       >
                         <KeyRound className="h-3 w-3" />
                       </Button>
@@ -235,7 +235,7 @@ export function AlgosView() {
                         size="sm"
                         variant="ghost"
                         onClick={() => setDeletingId(a.id)}
-                        title="delete"
+                        title="Delete"
                         className="hover:bg-red-500/15 hover:text-red-300"
                       >
                         <Trash2 className="h-3 w-3" />
@@ -257,14 +257,14 @@ export function AlgosView() {
       <Card>
         <CardHeader
           title="Telegram subscribers"
-          subtitle="chats that receive approved alerts"
+          subtitle="Chats that receive approved alerts"
           right={
             <div className="flex gap-2">
               <Button size="sm" variant="outline" onClick={findChatId} disabled={discovering}>
-                <Search className="h-3 w-3" /> {discovering ? "looking…" : "find my chat ID"}
+                <Search className="h-3 w-3" /> {discovering ? "Looking…" : "Find my chat ID"}
               </Button>
               <Button size="sm" variant="outline" onClick={testTelegram}>
-                <Send className="h-3 w-3" /> send test
+                <Send className="h-3 w-3" /> Send test
               </Button>
             </div>
           }
@@ -291,7 +291,9 @@ export function AlgosView() {
                 }`}
               >
                 <div className="flex items-center gap-2">
-                  <Badge variant={r.ok ? "green" : "red"}>{r.ok ? "delivered" : "failed"}</Badge>
+                  <Badge variant={r.ok ? "green" : "red"}>
+                    {r.ok ? "Delivered" : "Failed"}
+                  </Badge>
                   <span className="num text-zinc-300">{r.chat_id}</span>
                   {r.status ? <span className="text-zinc-500">HTTP {r.status}</span> : null}
                 </div>
@@ -319,10 +321,10 @@ export function AlgosView() {
           <table className="w-full text-xs">
             <thead className="text-[10px] uppercase tracking-wider text-zinc-500">
               <tr className="border-b border-zinc-800">
-                <th className="text-left px-3 py-2">chat_id</th>
-                <th className="text-left px-3 py-2">name</th>
-                <th className="text-left px-3 py-2">enabled</th>
-                <th className="text-left px-3 py-2">filter</th>
+                <th className="text-left px-3 py-2">Chat ID</th>
+                <th className="text-left px-3 py-2">Name</th>
+                <th className="text-left px-3 py-2">Enabled</th>
+                <th className="text-left px-3 py-2">Filter</th>
               </tr>
             </thead>
             <tbody>
@@ -332,12 +334,12 @@ export function AlgosView() {
                   <td className="px-3 py-1.5 text-zinc-300">{s.name ?? "—"}</td>
                   <td className="px-3 py-1.5">
                     {s.enabled ? (
-                      <Badge variant="green">on</Badge>
+                      <Badge variant="green">On</Badge>
                     ) : (
-                      <Badge variant="muted">off</Badge>
+                      <Badge variant="muted">Off</Badge>
                     )}
                   </td>
-                  <td className="px-3 py-1.5 text-zinc-500">all algos</td>
+                  <td className="px-3 py-1.5 text-zinc-500">All algorithms</td>
                 </tr>
               ))}
             </tbody>
@@ -386,7 +388,7 @@ export function AlgosView() {
             </p>
           </div>
         }
-        confirmLabel="regenerate"
+        confirmLabel="Regenerate"
         tone="danger"
         onCancel={() => setRegenTarget(null)}
         onConfirm={() => {
@@ -435,30 +437,30 @@ function RegisterForm({
   return (
     <div className="p-4 border-b border-zinc-800 space-y-3 bg-zinc-950/40">
       <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-        <Input placeholder="name" value={name} onChange={(e) => setName(e.target.value)} />
+        <Input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
         <Select value={type} onChange={(e) => setType(e.target.value)}>
-          <option value="hybrid">hybrid</option>
-          <option value="rules">rules</option>
-          <option value="llm">llm</option>
-          <option value="custom">custom</option>
+          <option value="hybrid">Hybrid</option>
+          <option value="rules">Rules</option>
+          <option value="llm">LLM</option>
+          <option value="custom">Custom</option>
         </Select>
         <Input
-          placeholder="symbols, comma-separated"
+          placeholder="Symbols (comma-separated)"
           value={symbols}
           onChange={(e) => setSymbols(e.target.value)}
         />
         <Input
-          placeholder="launch_cmd (optional)"
+          placeholder="Launch command (optional)"
           value={launchCmd}
           onChange={(e) => setLaunchCmd(e.target.value)}
         />
       </div>
       <div className="flex justify-end gap-2">
         <Button size="sm" variant="ghost" onClick={() => onDone(null)}>
-          cancel
+          Cancel
         </Button>
         <Button size="sm" variant="primary" onClick={submit} disabled={!name || submitting}>
-          register
+          Register
         </Button>
       </div>
     </div>
@@ -481,10 +483,10 @@ function SubscriberForm({ onAdded }: { onAdded: () => void }) {
   };
   return (
     <div className="p-3 border-b border-zinc-800 flex flex-wrap items-center gap-2 bg-zinc-950/40">
-      <Input placeholder="chat_id" value={chat} onChange={(e) => setChat(e.target.value)} />
-      <Input placeholder="name (optional)" value={name} onChange={(e) => setName(e.target.value)} />
+      <Input placeholder="Chat ID" value={chat} onChange={(e) => setChat(e.target.value)} />
+      <Input placeholder="Name (optional)" value={name} onChange={(e) => setName(e.target.value)} />
       <Button size="sm" variant="outline" onClick={submit} disabled={!chat}>
-        <Plus className="h-3 w-3" /> add subscriber
+        <Plus className="h-3 w-3" /> Add subscriber
       </Button>
     </div>
   );
@@ -554,31 +556,31 @@ function EditModal({
   return (
     <Modal title={`Edit · ${algo.name}`} onClose={onClose}>
       <div className="space-y-3">
-        <Field label="name">
+        <Field label="Name">
           <Input value={name} onChange={(e) => setName(e.target.value)} />
         </Field>
-        <Field label="type">
+        <Field label="Type">
           <Select value={type} onChange={(e) => setType(e.target.value)}>
-            <option value="hybrid">hybrid</option>
-            <option value="rules">rules</option>
-            <option value="llm">llm</option>
-            <option value="custom">custom</option>
+            <option value="hybrid">Hybrid</option>
+            <option value="rules">Rules</option>
+            <option value="llm">LLM</option>
+            <option value="custom">Custom</option>
           </Select>
         </Field>
-        <Field label="description">
+        <Field label="Description">
           <Input value={description} onChange={(e) => setDescription(e.target.value)} />
         </Field>
-        <Field label="symbols (comma-separated)">
+        <Field label="Symbols (comma-separated)">
           <Input value={symbols} onChange={(e) => setSymbols(e.target.value)} />
         </Field>
-        <Field label="launch_cmd">
+        <Field label="Launch command">
           <Input
             value={launchCmd}
             onChange={(e) => setLaunchCmd(e.target.value)}
             placeholder="uv run python -m trading_agent.live_hybrid -v"
           />
         </Field>
-        <Field label="db_path">
+        <Field label="Local database path">
           <Input value={dbPath} onChange={(e) => setDbPath(e.target.value)} />
         </Field>
         <Field label="">
@@ -589,7 +591,7 @@ function EditModal({
               onChange={(e) => setEnabled(e.target.checked)}
               className="accent-zinc-100"
             />
-            enabled (uncheck to pause without deleting)
+            Enabled (uncheck to pause without deleting)
           </label>
         </Field>
         {error ? (
@@ -600,10 +602,10 @@ function EditModal({
       </div>
       <div className="flex justify-end gap-2 mt-4">
         <Button size="sm" variant="ghost" onClick={onClose}>
-          cancel
+          Cancel
         </Button>
         <Button size="sm" variant="primary" onClick={submit} disabled={submitting || !name}>
-          save
+          Save
         </Button>
       </div>
     </Modal>
@@ -661,7 +663,7 @@ function DeleteModal({
         </p>
         <div>
           <div className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1">
-            type the algorithm name to confirm
+            Type the algorithm name to confirm
           </div>
           <Input
             value={confirmName}
@@ -677,10 +679,10 @@ function DeleteModal({
       </div>
       <div className="flex justify-end gap-2 mt-4">
         <Button size="sm" variant="ghost" onClick={onClose}>
-          cancel
+          Cancel
         </Button>
         <Button size="sm" variant="danger" onClick={submit} disabled={!canDelete || submitting}>
-          <Trash2 className="h-3 w-3" /> delete
+          <Trash2 className="h-3 w-3" /> Delete
         </Button>
       </div>
     </Modal>
@@ -701,10 +703,10 @@ function TokenModal({
         <p className="text-zinc-400">
           Copy this now — for security, the token is shown only once.
         </p>
-        <Field label="algorithm_id">
+        <Field label="Algorithm ID">
           <Input readOnly value={token.algorithm_id} className="num" />
         </Field>
-        <Field label="api_token">
+        <Field label="API token">
           <Input readOnly value={token.api_token} className="num" />
         </Field>
         <Button
@@ -712,12 +714,12 @@ function TokenModal({
           variant="outline"
           onClick={() => navigator.clipboard.writeText(token.api_token)}
         >
-          copy token
+          Copy token
         </Button>
       </div>
       <div className="flex justify-end gap-2 mt-4">
         <Button size="sm" variant="primary" onClick={onClose}>
-          done
+          Done
         </Button>
       </div>
     </Modal>
@@ -738,7 +740,7 @@ function ChatDiscoveryPanel({
       <div className="flex items-center justify-between mb-2">
         <div className="text-xs text-zinc-300 font-medium">Discovered chats</div>
         <Button size="sm" variant="ghost" onClick={onClose}>
-          dismiss
+          Dismiss
         </Button>
       </div>
       {!result.ok ? (
@@ -770,7 +772,7 @@ function ChatDiscoveryPanel({
                 <span className="num text-zinc-500">{c.chat_id}</span>
               </div>
               <Button size="sm" variant="outline" onClick={() => onAdd(c)}>
-                <Plus className="h-3 w-3" /> add
+                <Plus className="h-3 w-3" /> Add
               </Button>
             </div>
           ))}

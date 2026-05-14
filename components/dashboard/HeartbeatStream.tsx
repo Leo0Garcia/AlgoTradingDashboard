@@ -31,7 +31,7 @@ function summarize(e: StreamEvent, algoName: string): Row | null {
       id: `${e.algorithm_id}-${e.received_at}`,
       ts,
       algo: algoName,
-      kind: "heartbeat",
+      kind: "Heartbeat",
       detail: parts || "tick",
       tone: "muted",
     };
@@ -42,7 +42,7 @@ function summarize(e: StreamEvent, algoName: string): Row | null {
       id: `${e.algorithm_id}-${e.received_at}-alert`,
       ts,
       algo: algoName,
-      kind: "alert",
+      kind: "Alert",
       detail: `${p.symbol ?? ""} ${(p.direction || "").toUpperCase()} ${p.grade ?? ""}`,
       tone: p.direction === "long" ? "green" : "red",
     };
@@ -53,7 +53,7 @@ function summarize(e: StreamEvent, algoName: string): Row | null {
       id: `${e.algorithm_id}-${e.received_at}-fill`,
       ts,
       algo: algoName,
-      kind: "filled",
+      kind: "Filled",
       detail: `${p.external_id ?? ""} @ ${p.fill_px ?? "—"}`,
       tone: "blue",
     };
@@ -61,11 +61,12 @@ function summarize(e: StreamEvent, algoName: string): Row | null {
   if (e.event_type === "trade_exit") {
     const p = payload as { status?: string; r_outcome?: number };
     const r = typeof p.r_outcome === "number" ? p.r_outcome.toFixed(2) : "—";
+    const statusLabel = (p.status ?? "").toUpperCase();
     return {
       id: `${e.algorithm_id}-${e.received_at}-exit`,
       ts,
       algo: algoName,
-      kind: `exit ${p.status ?? ""}`,
+      kind: `Exit ${statusLabel}`.trim(),
       detail: `${r}R`,
       tone: (p.r_outcome ?? 0) >= 0 ? "green" : "red",
     };
@@ -76,7 +77,7 @@ function summarize(e: StreamEvent, algoName: string): Row | null {
       id: `${e.algorithm_id}-${e.received_at}-rej`,
       ts,
       algo: algoName,
-      kind: "rejected",
+      kind: "Rejected",
       detail: `${p.symbol ?? ""} — ${p.reason ?? "no reason"}`,
       tone: "amber",
     };
@@ -87,7 +88,7 @@ function summarize(e: StreamEvent, algoName: string): Row | null {
       id: `${e.algorithm_id}-${e.received_at}-err`,
       ts,
       algo: algoName,
-      kind: "error",
+      kind: "Error",
       detail: p.message ?? "unknown",
       tone: "red",
     };
@@ -128,7 +129,7 @@ export function HeartbeatStream() {
     <Card>
       <CardHeader
         title="Live event stream"
-        subtitle="heartbeats, alerts, fills, exits — newest first"
+        subtitle="Heartbeats, alerts, fills, exits — newest first"
         right={
           <Badge variant="muted">
             {rows.length} {rows.length === 1 ? "event" : "events"}

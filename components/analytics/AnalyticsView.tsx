@@ -134,13 +134,13 @@ export function AnalyticsView() {
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <Select value={w} onChange={(e) => setW(e.target.value as Window)}>
-          <option value="today">today</option>
-          <option value="7d">7d</option>
-          <option value="30d">30d</option>
-          <option value="all">all</option>
+          <option value="today">Today</option>
+          <option value="7d">Last 7 days</option>
+          <option value="30d">Last 30 days</option>
+          <option value="all">All time</option>
         </Select>
         <Select value={algoId} onChange={(e) => setAlgoId(e.target.value)}>
-          <option value="">all algorithms</option>
+          <option value="">All algorithms</option>
           {algos.map((a) => (
             <option key={a.id} value={a.id}>
               {a.name}
@@ -148,12 +148,12 @@ export function AnalyticsView() {
           ))}
         </Select>
         <Badge variant={total >= 0 ? "green" : "red"} className="ml-auto">
-          window Σ {fmtR(total)}
+          Window Σ {fmtR(total)}
         </Badge>
       </div>
 
       <Card>
-        <CardHeader title="Cumulative equity" subtitle="closed trades only" />
+        <CardHeader title="Cumulative equity" subtitle="Closed trades only" />
         <div className="h-72 px-2">
           {points.length === 0 ? (
             <div className="flex h-full items-center justify-center text-sm text-zinc-500">
@@ -236,7 +236,7 @@ export function AnalyticsView() {
         </Card>
 
         <Card className="lg:col-span-2">
-          <CardHeader title="P&L by hour of day" subtitle="sum of R per hour bucket" />
+          <CardHeader title="P&L by hour of day" subtitle="Sum of R per hour bucket" />
           <div className="h-60">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={byHour} margin={{ top: 16, right: 16, left: 0, bottom: 8 }}>
@@ -292,9 +292,9 @@ function BreakdownCard({
           <table className="w-full text-xs">
             <thead className="text-[10px] uppercase tracking-wider text-zinc-500">
               <tr className="border-b border-zinc-800">
-                <th className="text-left px-3 py-2">name</th>
-                <th className="text-right px-3 py-2">n</th>
-                <th className="text-right px-3 py-2">w/l</th>
+                <th className="text-left px-3 py-2">Name</th>
+                <th className="text-right px-3 py-2">Trades</th>
+                <th className="text-right px-3 py-2">W / L</th>
                 <th className="text-right px-3 py-2">Σ R</th>
               </tr>
             </thead>

@@ -46,7 +46,7 @@ export function EquityMini() {
     <Card>
       <CardHeader
         title="Today's equity curve"
-        subtitle="cumulative R across all algorithms"
+        subtitle="Cumulative R across all algorithms"
         right={<Badge variant={tone}>{fmtR(total)}</Badge>}
       />
       <div className="h-44">

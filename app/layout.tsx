@@ -31,7 +31,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             <Link href="/" className="flex items-center gap-2 text-sm font-semibold tracking-tight">
               <span className="h-2 w-2 rounded-sm bg-green-500" />
               TradingAgent
-              <span className="text-zinc-500 font-normal">/ command center</span>
+              <span className="text-zinc-500 font-normal">/ Command Center</span>
             </Link>
             <nav className="flex items-center gap-1 text-sm">
               {NAV.map((n) => (
