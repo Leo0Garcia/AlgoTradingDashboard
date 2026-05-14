@@ -81,6 +81,64 @@ describe("repo", () => {
     expect(curve[0].cumulative).toBeCloseTo(1.3);
   });
 
+  it("updates algorithm fields via patch semantics", async () => {
+    const repo = await import("@/lib/repo");
+    const { algorithm } = repo.registerAlgorithm({ name: "to-edit", type: "rules" });
+    const updated = repo.updateAlgorithm(algorithm.id, {
+      name: "renamed",
+      description: "new desc",
+      symbols: ["ES1!"],
+      enabled: false,
+    });
+    expect(updated?.name).toBe("renamed");
+    expect(updated?.description).toBe("new desc");
+    expect(updated?.symbols).toEqual(["ES1!"]);
+    expect(updated?.enabled).toBe(false);
+    // Unchanged field stays
+    expect(updated?.type).toBe("rules");
+  });
+
+  it("deletes algorithm and cascades its events and alerts", async () => {
+    const repo = await import("@/lib/repo");
+    const { algorithm } = repo.registerAlgorithm({ name: "to-delete", type: "rules" });
+    repo.upsertAlert(
+      algorithm.id,
+      {
+        external_id: "e1",
+        symbol: "MNQ1!",
+        direction: "long",
+        grade: "A",
+        recipe: "x",
+        entry_zone: [1, 2],
+        stop: 0,
+        tp1: 3,
+        tp2: 4,
+        tp3: 5,
+        confluences: [],
+        rationale: "",
+        approved: true,
+      },
+      new Date().toISOString(),
+    );
+    repo.insertEvent(algorithm.id, "heartbeat", { foo: "bar" });
+    expect(repo.listAlerts({ algorithm_id: algorithm.id })).toHaveLength(1);
+
+    const ok = repo.deleteAlgorithm(algorithm.id);
+    expect(ok).toBe(true);
+    expect(repo.getAlgorithm(algorithm.id)).toBeNull();
+    expect(repo.listAlerts({ algorithm_id: algorithm.id })).toHaveLength(0);
+  });
+
+  it("regenerates the api token", async () => {
+    const repo = await import("@/lib/repo");
+    const { algorithm } = repo.registerAlgorithm({ name: "rotate", type: "rules" });
+    const before = algorithm.api_token;
+    const after = repo.regenerateAlgorithmToken(algorithm.id);
+    expect(after?.api_token).not.toBe(before);
+    expect(repo.getAlgorithmByToken(before)).toBeNull();
+    expect(repo.getAlgorithmByToken(after!.api_token)?.id).toBe(algorithm.id);
+  });
+
   it("filters alerts by status and direction", async () => {
     const repo = await import("@/lib/repo");
     const { algorithm } = repo.registerAlgorithm({

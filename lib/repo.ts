@@ -177,6 +177,91 @@ export function setAlgorithmStatus(
   ).run(status, pid, nowIso(), id);
 }
 
+export interface AlgorithmUpdate {
+  name?: string;
+  type?: string;
+  description?: string | null;
+  symbols?: string[];
+  db_path?: string | null;
+  launch_cmd?: string | null;
+  account_id?: string | null;
+  enabled?: boolean;
+}
+
+export function updateAlgorithm(id: string, patch: AlgorithmUpdate): Algorithm | null {
+  const db = getDb();
+  const existing = db.prepare("SELECT * FROM algorithms WHERE id = ?").get(id) as Row | undefined;
+  if (!existing) return null;
+  const sets: string[] = [];
+  const params: unknown[] = [];
+  if (patch.name !== undefined) {
+    sets.push("name = ?");
+    params.push(patch.name);
+  }
+  if (patch.type !== undefined) {
+    sets.push("type = ?");
+    params.push(patch.type);
+  }
+  if (patch.description !== undefined) {
+    sets.push("description = ?");
+    params.push(patch.description);
+  }
+  if (patch.symbols !== undefined) {
+    sets.push("symbols = ?");
+    params.push(JSON.stringify(patch.symbols));
+  }
+  if (patch.db_path !== undefined) {
+    sets.push("db_path = ?");
+    params.push(patch.db_path);
+  }
+  if (patch.launch_cmd !== undefined) {
+    sets.push("launch_cmd = ?");
+    params.push(patch.launch_cmd);
+  }
+  if (patch.account_id !== undefined) {
+    sets.push("account_id = ?");
+    params.push(patch.account_id);
+  }
+  if (patch.enabled !== undefined) {
+    sets.push("enabled = ?");
+    params.push(patch.enabled ? 1 : 0);
+  }
+  if (sets.length === 0) return mapAlgorithm(existing);
+  sets.push("updated_at = ?");
+  params.push(nowIso());
+  params.push(id);
+  db.prepare(`UPDATE algorithms SET ${sets.join(", ")} WHERE id = ?`).run(...params);
+  const row = db.prepare("SELECT * FROM algorithms WHERE id = ?").get(id) as Row;
+  return mapAlgorithm(row);
+}
+
+export function deleteAlgorithm(id: string): boolean {
+  const db = getDb();
+  const existing = db.prepare("SELECT id FROM algorithms WHERE id = ?").get(id);
+  if (!existing) return false;
+  const tx = db.transaction((aid: string) => {
+    db.prepare("DELETE FROM alerts WHERE algorithm_id = ?").run(aid);
+    db.prepare("DELETE FROM events WHERE algorithm_id = ?").run(aid);
+    db.prepare("DELETE FROM algorithms WHERE id = ?").run(aid);
+  });
+  tx(id);
+  return true;
+}
+
+export function regenerateAlgorithmToken(id: string): Algorithm | null {
+  const db = getDb();
+  const existing = db.prepare("SELECT id FROM algorithms WHERE id = ?").get(id);
+  if (!existing) return null;
+  const token = `tok_${nanoid(40)}`;
+  db.prepare("UPDATE algorithms SET api_token = ?, updated_at = ? WHERE id = ?").run(
+    token,
+    nowIso(),
+    id,
+  );
+  const row = db.prepare("SELECT * FROM algorithms WHERE id = ?").get(id) as Row;
+  return mapAlgorithm(row);
+}
+
 // Events --------------------------------------------------------------------
 
 export function insertEvent(
