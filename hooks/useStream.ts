@@ -1,17 +1,18 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { StreamEvent } from "@/lib/types";
 
 type Listener = (e: StreamEvent) => void;
+type StatusListener = (connected: boolean) => void;
 
 interface SharedStream {
   es: EventSource | null;
   refs: number;
   listeners: Set<Listener>;
+  statusListeners: Set<StatusListener>;
   connected: boolean;
   lastEventAt: string | null;
-  setStatus: (c: boolean) => void;
 }
 
 declare global {
@@ -25,12 +26,25 @@ function shared(): SharedStream {
       es: null,
       refs: 0,
       listeners: new Set(),
+      statusListeners: new Set(),
       connected: false,
       lastEventAt: null,
-      setStatus: () => {},
     };
   }
   return globalThis.__sharedStream;
+}
+
+function broadcastStatus(connected: boolean) {
+  const s = shared();
+  if (s.connected === connected) return;
+  s.connected = connected;
+  for (const fn of s.statusListeners) {
+    try {
+      fn(connected);
+    } catch {
+      // ignore
+    }
+  }
 }
 
 function ensureConnected() {
@@ -38,18 +52,21 @@ function ensureConnected() {
   if (s.es) return;
   const es = new EventSource("/api/v1/stream");
   s.es = es;
-  es.onopen = () => {
-    s.connected = true;
-    s.setStatus(true);
-  };
+  es.onopen = () => broadcastStatus(true);
   es.onerror = () => {
-    s.connected = false;
-    s.setStatus(false);
+    // EventSource auto-reconnects; reflect transient disconnects in UI
+    if (es.readyState === EventSource.CLOSED) {
+      broadcastStatus(false);
+    } else if (es.readyState === EventSource.CONNECTING) {
+      broadcastStatus(false);
+    }
   };
   es.onmessage = (msg) => {
     try {
       const data = JSON.parse(msg.data) as StreamEvent | { kind: string };
       s.lastEventAt = new Date().toISOString();
+      // Receiving any message means we're definitely connected
+      if (!s.connected) broadcastStatus(true);
       for (const l of s.listeners) {
         try {
           l(data as StreamEvent);
@@ -68,23 +85,25 @@ function maybeDisconnect() {
   if (s.refs <= 0 && s.es) {
     s.es.close();
     s.es = null;
-    s.connected = false;
+    broadcastStatus(false);
   }
 }
 
 export function useStream(onEvent?: Listener) {
   const [, force] = useState(0);
-  const [connected, setConnected] = useState(false);
-  const [lastEventAt, setLastEventAt] = useState<string | null>(null);
+  const [connected, setConnected] = useState(() => shared().connected);
+  const [lastEventAt, setLastEventAt] = useState<string | null>(() => shared().lastEventAt);
   const handlerRef = useRef<Listener | null>(onEvent ?? null);
   handlerRef.current = onEvent ?? null;
 
   useEffect(() => {
     const s = shared();
     s.refs += 1;
-    s.setStatus = (c) => setConnected(c);
     ensureConnected();
     setConnected(s.connected);
+
+    const statusListener: StatusListener = (c) => setConnected(c);
+    s.statusListeners.add(statusListener);
 
     const listener: Listener = (e) => {
       setLastEventAt(new Date().toISOString());
@@ -95,14 +114,12 @@ export function useStream(onEvent?: Listener) {
 
     return () => {
       s.listeners.delete(listener);
+      s.statusListeners.delete(statusListener);
       s.refs -= 1;
       // Small grace period to avoid disconnecting between navigations
       setTimeout(maybeDisconnect, 50);
     };
   }, []);
-
-  const noop = useCallback(() => {}, []);
-  void noop;
 
   return { connected, lastEventAt };
 }
