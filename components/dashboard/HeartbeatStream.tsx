@@ -185,7 +185,7 @@ export function HeartbeatStream() {
         title="Live event stream"
         right={`${rows.length} events · newest first`}
       />
-      <div className="max-h-[420px] overflow-auto">
+      <div className="max-h-[420px] overflow-auto"><div className="min-w-max">
         {rows.length === 0 ? (
           <div className="px-[18px] py-10 text-center text-[11px] text-dim">
             WAITING_FOR_ALGORITHM_ACTIVITY
@@ -207,7 +207,7 @@ export function HeartbeatStream() {
                   {r.kind}
                 </span>
                 <span
-                  className={`flex-1 truncate ${r.bright ? "text-bright" : "text-dim"}`}
+                  className={`flex-1 whitespace-nowrap ${r.bright ? "text-bright" : "text-dim"}`}
                 >
                   {r.detail}
                 </span>
@@ -215,7 +215,7 @@ export function HeartbeatStream() {
             ))}
           </ul>
         )}
-      </div>
+      </div></div>
     </Card>
   );
 }
