@@ -44,7 +44,7 @@ export function EquityMini() {
       <div className="px-3 py-3 pb-1">
         <TerminalEquityCurve
           points={points}
-          height={360}
+          height={460}
           tickFormatter={(t) =>
             new Date(t).toLocaleTimeString([], {
               hour: "2-digit",
