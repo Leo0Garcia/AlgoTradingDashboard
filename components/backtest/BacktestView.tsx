@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { SectionHeader } from "@/components/ui/section-header";
 import { T } from "@/lib/theme";
@@ -45,164 +45,6 @@ interface Results {
 
 type Phase = "idle" | "running" | "done";
 
-function makeRand(seed: number): () => number {
-  let s = seed >>> 0;
-  return () => {
-    s = (Math.imul(1664525, s) + 1013904223) >>> 0;
-    return s / 4294967295;
-  };
-}
-
-function generateResults(
-  cfg: {
-    algoId: string;
-    symbol: string;
-    fromDt: string;
-    toDt: string;
-  },
-  algos: AlgoLite[],
-): Results {
-  const seed = (cfg.fromDt + cfg.toDt + cfg.algoId)
-    .split("")
-    .reduce((a, c) => a + c.charCodeAt(0), 0);
-  const rand = makeRand(seed);
-  const from = new Date(cfg.fromDt);
-  const to = new Date(cfg.toDt);
-  const days = Math.max(1, Math.round((+to - +from) / 86400000));
-  const target = Math.min(200, Math.max(50, Math.floor(days * 0.85)));
-  const winRate = 0.54 + rand() * 0.16;
-  const algo = algos.find((a) => a.id === cfg.algoId) ?? algos[0];
-  const algoSymbols = algo?.symbols?.length ? algo.symbols : ["SYM"];
-  const syms = cfg.symbol === "ALL" ? algoSymbols : [cfg.symbol];
-
-  const trades: Trade[] = [];
-  for (let i = 0; i < Math.ceil(target * 1.4); i++) {
-    if (trades.length >= target) break;
-    const dayOff = Math.floor(rand() * days);
-    const d = new Date(from.getTime() + dayOff * 86400000);
-    if (d.getDay() === 0 || d.getDay() === 6) continue;
-    d.setHours(9 + Math.floor(rand() * 7), Math.floor(rand() * 60), 0, 0);
-    const isWin = rand() < winRate;
-    const grade: Trade["grade"] = rand() < 0.25 ? "A+" : rand() < 0.65 ? "A" : "B";
-    let r = isWin
-      ? grade === "A+"
-        ? 2 + rand() * 1.5
-        : grade === "A"
-          ? 1 + rand() * 1.2
-          : 0.8 + rand() * 0.7
-      : -(0.8 + rand() * 0.4);
-    r = parseFloat(r.toFixed(2));
-    const sym = syms[Math.floor(rand() * syms.length)];
-    const dir: Trade["dir"] = rand() > 0.5 ? "long" : "short";
-    const status: Trade["status"] = isWin
-      ? r >= 3
-        ? "tp3"
-        : r >= 2
-          ? "tp2"
-          : "tp1"
-      : "stopped";
-    const base = sym.includes("NQ")
-      ? 21000 + rand() * 600
-      : sym.includes("MES") || sym.includes("ES")
-        ? 5700 + rand() * 200
-        : sym.includes("YM")
-          ? 39000 + rand() * 1000
-          : sym.includes("RTY")
-            ? 2000 + rand() * 150
-            : sym.includes("CL")
-              ? 70 + rand() * 15
-              : sym.includes("GC")
-                ? 2300 + rand() * 200
-                : 100 + rand() * 50;
-    trades.push({
-      id: `bt${i}`,
-      time: d.toISOString(),
-      symbol: sym,
-      dir,
-      grade,
-      entry: parseFloat(base.toFixed(2)),
-      stop: parseFloat(
-        (dir === "long"
-          ? base - 18 - rand() * 10
-          : base + 18 + rand() * 10
-        ).toFixed(2),
-      ),
-      r,
-      status,
-      cum: 0,
-    });
-  }
-
-  trades.sort((a, b) => a.time.localeCompare(b.time));
-  let cum = 0;
-  let peak = 0;
-  let maxDD = 0;
-  for (const t of trades) {
-    cum = parseFloat((cum + t.r).toFixed(2));
-    t.cum = cum;
-    if (cum > peak) peak = cum;
-    const dd = parseFloat((peak - cum).toFixed(2));
-    if (dd > maxDD) maxDD = dd;
-  }
-
-  const wins = trades.filter((t) => t.r > 0);
-  const losses = trades.filter((t) => t.r <= 0);
-  const n = trades.length || 1;
-  const avgWin = wins.length
-    ? parseFloat((wins.reduce((s, t) => s + t.r, 0) / wins.length).toFixed(2))
-    : 0;
-  const avgLoss = losses.length
-    ? parseFloat(
-        (losses.reduce((s, t) => s + t.r, 0) / losses.length).toFixed(2),
-      )
-    : 0;
-  const pf =
-    losses.length && avgLoss !== 0
-      ? parseFloat(
-          Math.abs(
-            (avgWin * wins.length) / (avgLoss * losses.length),
-          ).toFixed(2),
-        )
-      : 0;
-  const expectancy = parseFloat(
-    ((wins.length / n) * avgWin + (losses.length / n) * avgLoss).toFixed(2),
-  );
-
-  return {
-    trades,
-    totalTrades: trades.length,
-    wins: wins.length,
-    losses: losses.length,
-    totalR: cum,
-    winRatePct: parseFloat(((wins.length / n) * 100).toFixed(1)),
-    avgWin,
-    avgLoss,
-    profitFactor: pf,
-    maxDD: parseFloat(maxDD.toFixed(2)),
-    expectancy,
-  };
-}
-
-const RUN_LINES = (cfg: {
-  algoName: string;
-  fromDt: string;
-  toDt: string;
-  symbol: string;
-}): string[] => [
-  `> INIT backtest engine v2.4.1`,
-  `> ALGORITHM  : ${cfg.algoName.toUpperCase()}`,
-  `> DATE RANGE : ${cfg.fromDt.replace("T", " ")} → ${cfg.toDt.replace("T", " ")}`,
-  `> SYMBOL     : ${cfg.symbol}`,
-  `> FETCHING historical bars...`,
-  `> BARS LOADED: ${(12000 + Math.floor(Math.random() * 4000)).toLocaleString()} candles`,
-  `> RUNNING signal detection pass...`,
-  `> APPLYING entry / exit rules...`,
-  `> CALCULATING position sizing...`,
-  `> COMPUTING drawdown series...`,
-  `> BUILDING trade log...`,
-  `> ─────────────────────────────────────────`,
-  `> BACKTEST COMPLETE ✓`,
-];
 
 export function BacktestView() {
   const [algos, setAlgos] = useState<AlgoLite[]>([]);
@@ -216,6 +58,15 @@ export function BacktestView() {
   const [progress, setProgress] = useState(0);
   const [results, setResults] = useState<Results | null>(null);
   const [logPage, setLogPage] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const esRef = useRef<EventSource | null>(null);
+
+  useEffect(() => {
+    return () => {
+      esRef.current?.close();
+      esRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     fetch("/api/v1/algorithms", { cache: "no-store" })
@@ -246,37 +97,97 @@ export function BacktestView() {
     if (selectedAlgo) setSymbol("ALL");
   }, [algoId, selectedAlgo]);
 
+  const cancelRun = useCallback(() => {
+    esRef.current?.close();
+    esRef.current = null;
+  }, []);
+
   const runBacktest = useCallback(() => {
     if (!selectedAlgo) return;
-    const cfg = {
-      algoId,
-      symbol,
-      fromDt,
-      toDt,
-      algoName: selectedAlgo.name,
-    };
+    cancelRun();
     setPhase("running");
-    setLogLines([]);
+    setLogLines([
+      `> ALGORITHM  : ${selectedAlgo.name.toUpperCase()}`,
+      `> DATE RANGE : ${fromDt.replace("T", " ")} → ${toDt.replace("T", " ")}`,
+      `> SYMBOL     : ${symbol}`,
+    ]);
     setProgress(0);
     setLogPage(0);
     setResults(null);
+    setError(null);
 
-    const lines = RUN_LINES(cfg);
-    let i = 0;
-    const iv = setInterval(() => {
-      if (i < lines.length) {
-        const line = lines[i];
+    const qs = new URLSearchParams({
+      symbol,
+      from: fromDt,
+      to: toDt,
+    }).toString();
+    const es = new EventSource(
+      `/api/v1/algorithms/${selectedAlgo.id}/backtest?${qs}`,
+    );
+    esRef.current = es;
+
+    es.addEventListener("progress", (ev) => {
+      try {
+        const { pct, message } = JSON.parse((ev as MessageEvent).data) as {
+          pct: number;
+          message: string;
+        };
+        setProgress(pct);
+        setLogLines((prev) => [...prev, `PROGRESS ${pct} ${message}`]);
+      } catch {
+        // ignore malformed
+      }
+    });
+
+    es.addEventListener("log", (ev) => {
+      try {
+        const { line } = JSON.parse((ev as MessageEvent).data) as {
+          line: string;
+        };
         setLogLines((prev) => [...prev, line]);
-        setProgress(Math.round(((i + 1) / lines.length) * 100));
-        i++;
-      } else {
-        clearInterval(iv);
-        const res = generateResults(cfg, algos);
+      } catch {
+        // ignore
+      }
+    });
+
+    es.addEventListener("result", (ev) => {
+      try {
+        const res = JSON.parse((ev as MessageEvent).data) as Results;
         setResults(res);
         setPhase("done");
+        setProgress(100);
+      } catch (e) {
+        setError(`Bad result JSON: ${(e as Error).message}`);
+        setPhase("idle");
       }
-    }, 160);
-  }, [algoId, symbol, fromDt, toDt, selectedAlgo, algos]);
+      es.close();
+      esRef.current = null;
+    });
+
+    es.addEventListener("error", (ev) => {
+      // Server-sent `error` event carries data; native onerror does not.
+      const data = (ev as MessageEvent).data;
+      if (typeof data === "string" && data.length > 0) {
+        try {
+          const err = JSON.parse(data) as {
+            message: string;
+            detail?: string;
+            tail?: string;
+            exit_code?: number | null;
+          };
+          const detail = [err.detail, err.tail].filter(Boolean).join("\n\n");
+          setError(detail ? `${err.message}\n\n${detail}` : err.message);
+        } catch {
+          setError("Backtest failed (unparseable error payload)");
+        }
+      } else if (es.readyState === EventSource.CLOSED) {
+        setError("Backtest connection closed unexpectedly");
+      }
+      setPhase("idle");
+      es.close();
+      esRef.current = null;
+    });
+  }, [symbol, fromDt, toDt, selectedAlgo, cancelRun]);
 
   return (
     <main className="flex-1 overflow-auto">
@@ -362,11 +273,15 @@ export function BacktestView() {
               {phase === "running" ? "▶ RUNNING..." : "▶ RUN BACKTEST"}
             </button>
 
-            {phase === "done" ? (
+            {phase === "done" || phase === "running" ? (
               <button
                 onClick={() => {
+                  cancelRun();
                   setPhase("idle");
                   setResults(null);
+                  setError(null);
+                  setProgress(0);
+                  setLogLines([]);
                 }}
                 className="h-[30px] px-3.5 text-[11px] tracking-[0.08em] font-mono uppercase cursor-pointer"
                 style={{
@@ -375,11 +290,31 @@ export function BacktestView() {
                   color: T.dim,
                 }}
               >
-                ↺ RESET
+                {phase === "running" ? "■ CANCEL" : "↺ RESET"}
               </button>
             ) : null}
           </div>
         </Card>
+
+        {error ? (
+          <div
+            className="text-[11px] whitespace-pre-wrap leading-relaxed"
+            style={{
+              background: T.bgEl,
+              borderLeft: `3px solid ${T.red}`,
+              padding: "10px 18px",
+              color: T.text,
+            }}
+          >
+            <span
+              className="tracking-[0.08em]"
+              style={{ color: T.red, fontSize: 10 }}
+            >
+              ▸ BACKTEST FAILED
+            </span>
+            <div className="mt-1.5">{error}</div>
+          </div>
+        ) : null}
 
         {/* Running phase */}
         {phase === "running" ? (
