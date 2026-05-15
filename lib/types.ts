@@ -18,7 +18,10 @@ export type EventType =
   | "trade_filled"
   | "trade_exit"
   | "error"
-  | "heartbeat";
+  | "heartbeat"
+  | "algo_started"
+  | "algo_stopped"
+  | "algo_errored";
 
 export interface SessionState {
   active: boolean;

@@ -15,6 +15,11 @@ export async function GET() {
         }
       };
       send({ kind: "connected", ts: new Date().toISOString() });
+      // Replay the last ~50 events so a fresh subscriber sees recent activity
+      // (algorithm starts/stops, fills, exits) instead of an empty stream.
+      for (const ev of bus.recent()) {
+        send({ ...ev, replay: true });
+      }
       const unsub = bus.subscribe(send);
       const ping = setInterval(() => {
         try {

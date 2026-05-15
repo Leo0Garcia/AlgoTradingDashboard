@@ -6,7 +6,14 @@ import { Card } from "@/components/ui/card";
 import { SectionHeader } from "@/components/ui/section-header";
 import type { StreamEvent } from "@/lib/types";
 
-type EventTone = "alert" | "heartbeat" | "fill" | "exit" | "rejection" | "error";
+type EventTone =
+  | "alert"
+  | "heartbeat"
+  | "fill"
+  | "exit"
+  | "rejection"
+  | "error"
+  | "lifecycle";
 
 interface Row {
   id: string;
@@ -25,6 +32,7 @@ const TONE_COLOR: Record<EventTone, string> = {
   exit: "text-green",
   rejection: "text-amber",
   error: "text-red",
+  lifecycle: "text-blue",
 };
 
 function fmtTime(iso: string): string {
@@ -102,6 +110,34 @@ function summarize(e: StreamEvent, algoName: string): Row | null {
       detail: `${p.symbol ?? ""} — ${p.reason ?? "no reason"}`,
     };
   }
+  if (
+    e.event_type === "algo_started" ||
+    e.event_type === "algo_stopped" ||
+    e.event_type === "algo_errored"
+  ) {
+    const p = payload as { name?: string; pid?: number; message?: string };
+    const kind =
+      e.event_type === "algo_started"
+        ? "started"
+        : e.event_type === "algo_stopped"
+          ? "stopped"
+          : "errored";
+    const detail =
+      e.event_type === "algo_errored"
+        ? (p.message?.split("\n")[0] ?? "launch failed")
+        : p.pid
+          ? `pid ${p.pid}`
+          : (p.name ?? "");
+    return {
+      id: `${e.algorithm_id}-${e.received_at}-${e.event_type}`,
+      ts,
+      algo: algoName,
+      tone: e.event_type === "algo_errored" ? "error" : "lifecycle",
+      kind,
+      detail,
+      bright: true,
+    };
+  }
   if (e.event_type === "error") {
     const p = payload as { message?: string };
     return {
@@ -137,7 +173,10 @@ export function HeartbeatStream() {
     const name = nameMap[e.algorithm_id] || e.algorithm_id.slice(0, 10);
     const row = summarize(e, name);
     if (!row) return;
-    setRows((rs) => [row, ...rs].slice(0, MAX_ROWS));
+    setRows((rs) => {
+      if (rs.some((x) => x.id === row.id)) return rs;
+      return [row, ...rs].slice(0, MAX_ROWS);
+    });
   });
 
   return (

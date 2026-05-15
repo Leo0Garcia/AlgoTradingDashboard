@@ -9,7 +9,22 @@ import {
   setAlgorithmStatus,
   setAlgorithmLaunchError,
 } from "@/lib/repo";
-import type { Algorithm } from "@/lib/types";
+import { publishEvent } from "@/lib/sse";
+import type { Algorithm, EventType } from "@/lib/types";
+
+function emitLifecycle(
+  algorithmId: string,
+  event_type: EventType,
+  payload: Record<string, unknown>,
+) {
+  publishEvent({
+    kind: "event",
+    algorithm_id: algorithmId,
+    event_type,
+    payload,
+    received_at: new Date().toISOString(),
+  });
+}
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -103,6 +118,7 @@ export async function POST(
     childPids.delete(id);
     setAlgorithmStatus(id, "stopped", null);
     setAlgorithmLaunchError(id, null);
+    emitLifecycle(id, "algo_stopped", { name: algo.name, pid });
     return NextResponse.json({ ok: true });
   }
 
@@ -222,6 +238,12 @@ export async function POST(
       `Tail of ${logFile}:\n${tail || "(empty)"}`;
     setAlgorithmStatus(id, "errored", null);
     setAlgorithmLaunchError(id, message);
+    emitLifecycle(id, "algo_errored", {
+      name: algo.name,
+      exit_code: exitCode,
+      exit_signal: exitSignal,
+      message,
+    });
     return NextResponse.json(
       {
         error: "launch failed",
@@ -237,6 +259,7 @@ export async function POST(
   childPids.set(id, child.pid);
   setAlgorithmStatus(id, "running", child.pid);
   setAlgorithmLaunchError(id, null);
+  emitLifecycle(id, "algo_started", { name: algo.name, pid: child.pid, cwd });
   void exited;
 
   return NextResponse.json({
