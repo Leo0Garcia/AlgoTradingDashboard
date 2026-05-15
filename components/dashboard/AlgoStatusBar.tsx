@@ -237,13 +237,13 @@ function AlgoCard({
       className={`bg-bg-el border border-bg-el-2 border-t-2 ${accent} flex flex-col`}
     >
       {/* Header */}
-      <div className="px-3 py-2.5 flex items-center gap-2.5">
-        <span className={`pulse-dot ${a.status} flex-shrink-0`} />
+      <div className="px-3.5 pt-3 pb-2.5 flex items-start gap-2.5">
+        <span className={`pulse-dot ${a.status} flex-shrink-0 mt-1.5`} />
         <div className="min-w-0 flex-1">
           <div className="text-bright font-semibold text-[13px] tracking-[0.02em] uppercase truncate">
             {a.name}
           </div>
-          <div className="text-dim text-[9px] mt-0.5 tracking-[0.06em] uppercase truncate">
+          <div className="text-dim text-[9px] mt-1 tracking-[0.06em] uppercase truncate">
             {[a.type, ...a.symbols].filter(Boolean).join(" · ") || "—"}
           </div>
         </div>
@@ -273,7 +273,7 @@ function AlgoCard({
       <div className="h-px bg-bg-el-2" />
 
       {/* Stats */}
-      <div className="px-3 py-2.5 grid grid-cols-3 gap-2">
+      <div className="px-3.5 pt-3.5 pb-3 grid grid-cols-3 gap-2">
         <Stat label="ALERTS" value={String(a.stats_today.total_alerts)} />
         <Stat
           label="W / L"
@@ -287,7 +287,7 @@ function AlgoCard({
       </div>
 
       {/* Footer */}
-      <div className="px-3 pb-2 pt-0.5 flex items-center justify-between text-[9px] tracking-[0.06em]">
+      <div className="px-3.5 pb-2.5 pt-0 flex items-center justify-between text-[9px] tracking-[0.06em]">
         <span className="text-green truncate">{sessionLabel ?? ""}</span>
         <span className="text-dim flex-shrink-0">HB {hbAgo(a.last_heartbeat)}</span>
       </div>
@@ -309,7 +309,7 @@ function Stat({
   return (
     <div>
       <div className="text-[9px] tracking-[0.1em] text-dim uppercase">{label}</div>
-      <div className={`text-[18px] font-semibold leading-tight mt-0.5 ${cls}`}>
+      <div className={`text-[20px] font-semibold leading-tight mt-1.5 ${cls}`}>
         {value}
       </div>
     </div>
