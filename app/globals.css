@@ -70,6 +70,7 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--div); border-radius: 0; }
 ::-webkit-scrollbar-thumb:hover { background: #2a2a2a; }
+::-webkit-scrollbar-corner { background: transparent; }
 
 /* Form controls inherit mono + dark color-scheme so native pickers look right */
 select, input, button, textarea {
