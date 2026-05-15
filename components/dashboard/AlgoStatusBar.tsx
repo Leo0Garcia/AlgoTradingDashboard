@@ -240,10 +240,10 @@ function AlgoCard({
       <div className="px-5 pt-5 pb-4 flex items-start gap-2.5">
         <span className={`pulse-dot ${a.status} flex-shrink-0 mt-1.5`} />
         <div className="min-w-0 flex-1">
-          <div className="text-bright font-semibold text-[13px] tracking-[0.02em] uppercase truncate">
+          <div className="text-bright font-semibold text-[16px] tracking-[0.02em] uppercase truncate">
             {a.name}
           </div>
-          <div className="text-dim text-[9px] mt-2 tracking-[0.06em] uppercase truncate">
+          <div className="text-dim text-[11px] mt-2 tracking-[0.06em] uppercase truncate">
             {[a.type, ...a.symbols].filter(Boolean).join(" · ") || "—"}
           </div>
         </div>
@@ -287,7 +287,7 @@ function AlgoCard({
       </div>
 
       {/* Footer */}
-      <div className="px-5 pb-4 pt-0 flex items-center justify-between text-[9px] tracking-[0.06em]">
+      <div className="px-5 pb-4 pt-0 flex items-center justify-between text-[11px] tracking-[0.06em]">
         <span className="text-green truncate">{sessionLabel ?? ""}</span>
         <span className="text-dim flex-shrink-0">HB {hbAgo(a.last_heartbeat)}</span>
       </div>
@@ -309,7 +309,7 @@ function Stat({
   return (
     <div>
       <div className="text-[13px] tracking-[0.08em] text-dim uppercase">{label}</div>
-      <div className={`text-[20px] font-semibold leading-tight mt-2.5 ${cls}`}>
+      <div className={`text-[25px] font-semibold leading-tight mt-2.5 ${cls}`}>
         {value}
       </div>
     </div>
