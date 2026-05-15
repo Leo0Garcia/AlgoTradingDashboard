@@ -45,8 +45,6 @@ interface Results {
 
 type Phase = "idle" | "running" | "done";
 
-const TIMEFRAMES = ["1m", "5m", "15m", "1H", "4H"] as const;
-
 function makeRand(seed: number): () => number {
   let s = seed >>> 0;
   return () => {
@@ -189,13 +187,12 @@ const RUN_LINES = (cfg: {
   algoName: string;
   fromDt: string;
   toDt: string;
-  timeframe: string;
   symbol: string;
 }): string[] => [
   `> INIT backtest engine v2.4.1`,
   `> ALGORITHM  : ${cfg.algoName.toUpperCase()}`,
   `> DATE RANGE : ${cfg.fromDt.replace("T", " ")} → ${cfg.toDt.replace("T", " ")}`,
-  `> TIMEFRAME  : ${cfg.timeframe}  ·  SYMBOL: ${cfg.symbol}`,
+  `> SYMBOL     : ${cfg.symbol}`,
   `> FETCHING historical bars...`,
   `> BARS LOADED: ${(12000 + Math.floor(Math.random() * 4000)).toLocaleString()} candles`,
   `> RUNNING signal detection pass...`,
@@ -213,7 +210,6 @@ export function BacktestView() {
   const [symbol, setSymbol] = useState<string>("ALL");
   const [fromDt, setFromDt] = useState<string>("2026-01-01T09:30");
   const [toDt, setToDt] = useState<string>("2026-05-14T16:00");
-  const [timeframe, setTimeframe] = useState<string>("5m");
 
   const [phase, setPhase] = useState<Phase>("idle");
   const [logLines, setLogLines] = useState<string[]>([]);
@@ -257,7 +253,6 @@ export function BacktestView() {
       symbol,
       fromDt,
       toDt,
-      timeframe,
       algoName: selectedAlgo.name,
     };
     setPhase("running");
@@ -281,7 +276,7 @@ export function BacktestView() {
         setPhase("done");
       }
     }, 160);
-  }, [algoId, symbol, fromDt, toDt, timeframe, selectedAlgo, algos]);
+  }, [algoId, symbol, fromDt, toDt, selectedAlgo, algos]);
 
   return (
     <main className="flex-1 overflow-auto">
@@ -326,21 +321,6 @@ export function BacktestView() {
                 {(selectedAlgo?.symbols ?? []).map((s) => (
                   <option key={s} value={s}>
                     {s}
-                  </option>
-                ))}
-              </BtSelect>
-            </Field>
-
-            <Field label="TIMEFRAME">
-              <BtSelect
-                value={timeframe}
-                onChange={(e) => setTimeframe(e.target.value)}
-                disabled={phase === "running"}
-                minWidth={80}
-              >
-                {TIMEFRAMES.map((tf) => (
-                  <option key={tf} value={tf}>
-                    {tf}
                   </option>
                 ))}
               </BtSelect>
@@ -438,7 +418,6 @@ export function BacktestView() {
             algoName={selectedAlgo.name}
             fromDt={fromDt}
             toDt={toDt}
-            timeframe={timeframe}
             symbol={symbol}
             logPage={logPage}
             setLogPage={setLogPage}
@@ -546,7 +525,6 @@ function BTResults({
   algoName,
   fromDt,
   toDt,
-  timeframe,
   symbol,
   logPage,
   setLogPage,
@@ -555,7 +533,6 @@ function BTResults({
   algoName: string;
   fromDt: string;
   toDt: string;
-  timeframe: string;
   symbol: string;
   logPage: number;
   setLogPage: (fn: (p: number) => number) => void;
@@ -618,9 +595,7 @@ function BTResults({
         <span style={{ color: T.text, fontSize: 11 }}>
           {`${fromDt.replace("T", " ")} → ${toDt.replace("T", " ")}`}
         </span>
-        <span style={{ color: T.dim, fontSize: 10 }}>
-          {timeframe} · {symbol}
-        </span>
+        <span style={{ color: T.dim, fontSize: 10 }}>{symbol}</span>
         <span
           className="ml-auto font-semibold"
           style={{ color: rc(results.totalR), fontSize: 15 }}
