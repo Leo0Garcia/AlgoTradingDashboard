@@ -17,7 +17,7 @@ export interface EquityPoint {
 
 export function TerminalEquityCurve({
   points,
-  height = 148,
+  height = 220,
   tickFormatter,
 }: {
   points: EquityPoint[];
@@ -34,21 +34,42 @@ export function TerminalEquityCurve({
       </div>
     );
   }
-  const vals = points.map((p) => p.cumulative);
-  const min = Math.min(0, ...vals);
-  const max = Math.max(0, ...vals);
+  // Prepend a synthetic 0 starting point so a single trade still draws a
+  // proper line from baseline → outcome (instead of a lone dot).
+  const series: EquityPoint[] =
+    points[0].cumulative !== 0
+      ? [{ ts: points[0].ts, cumulative: 0 }, ...points]
+      : points;
+
+  const vals = series.map((p) => p.cumulative);
+  const rawMin = Math.min(0, ...vals);
+  const rawMax = Math.max(0, ...vals);
+  const rawRange = rawMax - rawMin || 1;
+  // 10% breathing room so points never sit on the chart edge.
+  const padFactor = 0.1;
+  const min = rawMin - rawRange * padFactor;
+  const max = rawMax + rawRange * padFactor;
   const range = max - min || 1;
+
   const W = 580;
   const H = height - 8;
-  const pad = { l: 36, r: 48, t: 8, b: 18 };
+  const pad = { l: 40, r: 56, t: 12, b: 22 };
   const iw = W - pad.l - pad.r;
   const ih = H - pad.t - pad.b;
-  const px = (i: number) => pad.l + (i / (points.length - 1 || 1)) * iw;
+  const px = (i: number) => pad.l + (i / (series.length - 1 || 1)) * iw;
   const py = (v: number) => pad.t + ih - ((v - min) / range) * ih;
   const zero = py(0);
-  const polyPts = points.map((p, i) => `${px(i)},${py(p.cumulative)}`).join(" ");
+  const polyPts = series.map((p, i) => `${px(i)},${py(p.cumulative)}`).join(" ");
   const last = vals[vals.length - 1];
   const col = last >= 0 ? T.green : T.red;
+
+  // Build a small set of y-axis tick labels so users can read the scale.
+  const ticks = (() => {
+    const out = new Set<number>([0]);
+    if (rawMax > 0) out.add(rawMax);
+    if (rawMin < 0) out.add(rawMin);
+    return Array.from(out).sort((a, b) => a - b);
+  })();
 
   return (
     <svg
@@ -87,9 +108,9 @@ export function TerminalEquityCurve({
         strokeWidth={1.5}
         strokeLinejoin="round"
       />
-      <circle cx={px(points.length - 1)} cy={py(last)} r={3} fill={col} />
+      <circle cx={px(series.length - 1)} cy={py(last)} r={3} fill={col} />
       <text
-        x={px(points.length - 1) + 6}
+        x={px(series.length - 1) + 6}
         y={py(last) + 4}
         fontSize={9}
         fill={col}
@@ -97,37 +118,41 @@ export function TerminalEquityCurve({
       >
         {(last > 0 ? "+" : "") + last.toFixed(1) + "R"}
       </text>
-      <text
-        x={pad.l - 4}
-        y={zero + 4}
-        textAnchor="end"
-        fontSize={9}
-        fill={T.dim}
-        fontFamily={T.mono}
-      >
-        0
-      </text>
+      {/* Y-axis tick labels (min / 0 / max) */}
+      {ticks.map((t) => (
+        <text
+          key={t}
+          x={pad.l - 6}
+          y={py(t) + 3}
+          textAnchor="end"
+          fontSize={9}
+          fill={T.dim}
+          fontFamily={T.mono}
+        >
+          {t === 0 ? "0" : (t > 0 ? "+" : "") + t.toFixed(1) + "R"}
+        </text>
+      ))}
       {/* X-axis ticks */}
-      {tickFormatter && points.length > 1 ? (
+      {tickFormatter && series.length > 1 ? (
         <>
           <text
             x={pad.l}
-            y={H - 4}
+            y={H - 6}
             fontSize={9}
             fill={T.dim}
             fontFamily={T.mono}
           >
-            {tickFormatter(points[0].ts)}
+            {tickFormatter(series[0].ts)}
           </text>
           <text
             x={W - pad.r}
-            y={H - 4}
+            y={H - 6}
             textAnchor="end"
             fontSize={9}
             fill={T.dim}
             fontFamily={T.mono}
           >
-            {tickFormatter(points[points.length - 1].ts)}
+            {tickFormatter(series[series.length - 1].ts)}
           </text>
         </>
       ) : null}

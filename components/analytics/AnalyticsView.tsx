@@ -164,7 +164,7 @@ export function AnalyticsView() {
         <div className="px-3 py-3 pb-1.5">
           <TerminalEquityCurve
             points={points}
-            height={180}
+            height={260}
             tickFormatter={(t) => new Date(t).toLocaleDateString()}
           />
         </div>
