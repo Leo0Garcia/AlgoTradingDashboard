@@ -51,9 +51,12 @@ export function TerminalEquityCurve({
   const max = rawMax + rawRange * padFactor;
   const range = max - min || 1;
 
-  const W = 580;
+  // viewBox stretches non-uniformly via preserveAspectRatio="none", but
+  // matching the rendered height keeps stroke widths and label sizes from
+  // looking warped — so we let W and H follow `height`.
+  const W = 880;
   const H = height - 8;
-  const pad = { l: 40, r: 56, t: 12, b: 22 };
+  const pad = { l: 44, r: 60, t: 14, b: 26 };
   const iw = W - pad.l - pad.r;
   const ih = H - pad.t - pad.b;
   const px = (i: number) => pad.l + (i / (series.length - 1 || 1)) * iw;
