@@ -4,8 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { useStream } from "@/hooks/useStream";
 import { Button } from "@/components/ui/button";
 import { fmtR } from "@/lib/utils";
-import { Play, Square } from "lucide-react";
-import { SessionBanner, SessionInline } from "./SessionBadge";
+import { Play } from "lucide-react";
+import { SessionBanner } from "./SessionBadge";
 import type { SessionState } from "@/lib/types";
 
 interface AlgorithmEntry {
@@ -67,7 +67,10 @@ export function AlgoStatusBar() {
     if (
       e.kind === "heartbeat" ||
       e.event_type === "trade_exit" ||
-      e.event_type === "alert"
+      e.event_type === "alert" ||
+      e.event_type === "algo_started" ||
+      e.event_type === "algo_stopped" ||
+      e.event_type === "algo_errored"
     ) {
       refresh();
     }
@@ -119,7 +122,7 @@ export function AlgoStatusBar() {
 
   if (algos.length === 0) {
     return (
-      <div className="bg-bg-el border-l-[3px] border-l-div px-[18px] py-3 text-[11px] text-dim">
+      <div className="bg-bg-el border-t-2 border-t-div px-[18px] py-3 text-[11px] text-dim">
         NO_ALGORITHMS_REGISTERED — register one from the{" "}
         <span className="text-text">Algorithms</span> tab, or via{" "}
         <code className="text-text">POST /api/v1/algorithms/register</code>.
@@ -131,6 +134,8 @@ export function AlgoStatusBar() {
     (a) => a.status === "running" && a.last_session && !a.last_session.active,
   );
 
+  const cols = Math.min(algos.length, 4);
+
   return (
     <div className="flex flex-col gap-3.5">
       {pausedAlgos.length > 0 ? (
@@ -141,30 +146,43 @@ export function AlgoStatusBar() {
         </div>
       ) : null}
 
-      {algos.map((a) => (
-        <div key={a.id} className="flex flex-col gap-2">
-          <StatusRow algo={a} onControl={control} />
-          {errors[a.id] ? (
-            <LaunchErrorBanner
-              error={errors[a.id]}
-              onDismiss={() => dismissError(a.id)}
-            />
-          ) : a.last_launch_error && a.status === "errored" ? (
-            <LaunchErrorBanner
-              error={{ message: a.last_launch_error }}
-              onDismiss={() => dismissError(a.id)}
-            />
-          ) : null}
-        </div>
-      ))}
+      <div
+        className="grid gap-2.5"
+        style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+      >
+        {algos.map((a) => (
+          <AlgoCard key={a.id} algo={a} onControl={control} />
+        ))}
+      </div>
+
+      {algos.some((a) => errors[a.id] || (a.last_launch_error && a.status === "errored"))
+        ? algos.map((a) => {
+            const err =
+              errors[a.id] ??
+              (a.last_launch_error && a.status === "errored"
+                ? { message: a.last_launch_error }
+                : null);
+            if (!err) return null;
+            return (
+              <LaunchErrorBanner
+                key={`err-${a.id}`}
+                algoName={a.name}
+                error={err}
+                onDismiss={() => dismissError(a.id)}
+              />
+            );
+          })
+        : null}
     </div>
   );
 }
 
 function LaunchErrorBanner({
+  algoName,
   error,
   onDismiss,
 }: {
+  algoName: string;
   error: LaunchError;
   onDismiss: () => void;
 }) {
@@ -172,7 +190,7 @@ function LaunchErrorBanner({
     <div className="bg-bg-el border-l-[3px] border-l-red px-[18px] py-2.5 text-[11px]">
       <div className="flex items-start gap-3">
         <span className="text-red text-[10px] tracking-[0.06em] flex-shrink-0">
-          ▸ LAUNCH FAILED
+          ▸ {algoName.toUpperCase()} · LAUNCH FAILED
         </span>
         <div className="flex-1 text-text whitespace-pre-wrap leading-relaxed">
           {error.message}
@@ -198,7 +216,7 @@ function LaunchErrorBanner({
   );
 }
 
-function StatusRow({
+function AlgoCard({
   algo: a,
   onControl,
 }: {
@@ -207,32 +225,57 @@ function StatusRow({
 }) {
   const accent =
     a.status === "running"
-      ? "border-l-green"
+      ? "border-t-green"
       : a.status === "errored"
-        ? "border-l-red"
-        : "border-l-div";
+        ? "border-t-red"
+        : "border-t-div";
+
+  const sessionLabel = a.last_session?.name
+    ? `${a.last_session.name.toUpperCase()} SESSION`
+    : null;
 
   return (
     <div
-      className={`bg-bg-el border-l-[3px] ${accent} px-[18px] py-3 flex items-center gap-7`}
+      className={`bg-bg-el border border-bg-el-2 border-t-2 ${accent} flex flex-col`}
     >
-      <span className={`pulse-dot ${a.status} flex-shrink-0`} />
-
-      <div className="min-w-0">
-        <div className="text-bright font-semibold text-[14px] tracking-[0.02em] uppercase truncate">
-          {a.name}
+      {/* Header */}
+      <div className="px-3 py-2.5 flex items-center gap-2.5">
+        <span className={`pulse-dot ${a.status} flex-shrink-0`} />
+        <div className="min-w-0 flex-1">
+          <div className="text-bright font-semibold text-[13px] tracking-[0.02em] uppercase truncate">
+            {a.name}
+          </div>
+          <div className="text-dim text-[9px] mt-0.5 tracking-[0.06em] uppercase truncate">
+            {[a.type, ...a.symbols].filter(Boolean).join(" · ") || "—"}
+          </div>
         </div>
-        <div className="text-dim text-[10px] mt-0.5 tracking-[0.06em]">
-          <span className="uppercase">{a.type}</span> · HB {hbAgo(a.last_heartbeat)}
+        <div className="flex-shrink-0">
+          {a.status === "running" ? (
+            <Button
+              size="sm"
+              variant="danger"
+              onClick={() => onControl(a.id, "stop")}
+            >
+              ■ STOP
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={!a.launch_cmd}
+              title={a.launch_cmd ?? "No launch command configured"}
+              onClick={() => onControl(a.id, "start")}
+            >
+              <Play className="h-3 w-3" /> START
+            </Button>
+          )}
         </div>
       </div>
 
-      <div className="border-l border-div pl-7 flex items-center gap-5">
-        <span className="text-text text-[12px]">{a.symbols.join(" · ") || "—"}</span>
-        <SessionInline session={a.last_session} />
-      </div>
+      <div className="h-px bg-bg-el-2" />
 
-      <div className="ml-auto flex items-center gap-9">
+      {/* Stats */}
+      <div className="px-3 py-2.5 grid grid-cols-3 gap-2">
         <Stat label="ALERTS" value={String(a.stats_today.total_alerts)} />
         <Stat
           label="W / L"
@@ -245,22 +288,10 @@ function StatusRow({
         />
       </div>
 
-      <div className="flex">
-        {a.status === "running" ? (
-          <Button size="sm" variant="danger" onClick={() => onControl(a.id, "stop")}>
-            ■ STOP
-          </Button>
-        ) : (
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={!a.launch_cmd}
-            title={a.launch_cmd ?? "No launch command configured"}
-            onClick={() => onControl(a.id, "start")}
-          >
-            <Play className="h-3 w-3" /> START
-          </Button>
-        )}
+      {/* Footer */}
+      <div className="px-3 pb-2 pt-0.5 flex items-center justify-between text-[9px] tracking-[0.06em]">
+        <span className="text-green truncate">{sessionLabel ?? ""}</span>
+        <span className="text-dim flex-shrink-0">HB {hbAgo(a.last_heartbeat)}</span>
       </div>
     </div>
   );
@@ -278,9 +309,11 @@ function Stat({
   const cls =
     tone === "green" ? "text-green" : tone === "red" ? "text-red" : "text-text";
   return (
-    <div className="text-right">
+    <div>
       <div className="text-[9px] tracking-[0.1em] text-dim uppercase">{label}</div>
-      <div className={`text-[18px] font-semibold mt-0.5 ${cls}`}>{value}</div>
+      <div className={`text-[18px] font-semibold leading-tight mt-0.5 ${cls}`}>
+        {value}
+      </div>
     </div>
   );
 }
