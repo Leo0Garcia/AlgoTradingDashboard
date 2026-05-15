@@ -13,7 +13,10 @@ interface SharedStream {
   statusListeners: Set<StatusListener>;
   connected: boolean;
   lastEventAt: string | null;
+  buffer: StreamEvent[];
 }
+
+const CLIENT_BUFFER_SIZE = 50;
 
 declare global {
   // eslint-disable-next-line no-var
@@ -29,6 +32,7 @@ function shared(): SharedStream {
       statusListeners: new Set(),
       connected: false,
       lastEventAt: null,
+      buffer: [],
     };
   }
   return globalThis.__sharedStream;
@@ -67,6 +71,19 @@ function ensureConnected() {
       s.lastEventAt = new Date().toISOString();
       // Receiving any message means we're definitely connected
       if (!s.connected) broadcastStatus(true);
+      // Buffer real events (skip the synthetic "connected" handshake)
+      // so newly-mounted subscribers can be re-played when the user
+      // navigates back to a screen that consumes the stream.
+      if (
+        data &&
+        (data as StreamEvent).algorithm_id &&
+        (data as { kind?: string }).kind !== "connected"
+      ) {
+        s.buffer.push(data as StreamEvent);
+        if (s.buffer.length > CLIENT_BUFFER_SIZE) {
+          s.buffer.splice(0, s.buffer.length - CLIENT_BUFFER_SIZE);
+        }
+      }
       for (const l of s.listeners) {
         try {
           l(data as StreamEvent);
@@ -111,6 +128,17 @@ export function useStream(onEvent?: Listener) {
       force((x) => x + 1);
     };
     s.listeners.add(listener);
+
+    // Replay buffered events so a freshly-mounted consumer (e.g. user
+    // returning to the Live tab) sees recent activity instead of an
+    // empty panel. Marked replay:true so handlers can dedupe.
+    for (const ev of s.buffer) {
+      try {
+        handlerRef.current?.({ ...ev, replay: true } as StreamEvent);
+      } catch {
+        // ignore
+      }
+    }
 
     return () => {
       s.listeners.delete(listener);
