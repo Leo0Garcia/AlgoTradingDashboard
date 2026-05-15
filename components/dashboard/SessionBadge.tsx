@@ -98,7 +98,7 @@ export function SessionBanner({
   const nextLabel = labelFor(session.next_window_name ?? null);
 
   return (
-    <div className="bg-bg-el border-l-[3px] border-l-amber px-[18px] py-4 flex items-center gap-3 text-[11px]">
+    <div className="bg-bg-el border-l-[3px] border-l-amber px-[18px] py-5 flex items-center gap-3 text-[11px]">
       <span className="text-amber text-[12px]">☾</span>
       <div className="leading-relaxed text-text">
         <span className="text-bright">{algoName.toUpperCase()}</span> PAUSED —
