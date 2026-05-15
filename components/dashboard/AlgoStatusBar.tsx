@@ -145,8 +145,8 @@ export function AlgoStatusBar() {
       ) : null}
 
       <div
-        className="grid gap-2.5 justify-start"
-        style={{ gridTemplateColumns: "repeat(4, 280px)" }}
+        className="grid gap-2.5"
+        style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}
       >
         {algos.map((a) => (
           <AlgoCard key={a.id} algo={a} onControl={control} />
@@ -229,7 +229,7 @@ function AlgoCard({
         : "border-t-div";
 
   const sessionLabel = a.last_session?.name
-    ? `${a.last_session.name.toUpperCase()} SESSION`
+    ? `☼ ${a.last_session.name.toUpperCase()} SESSION`
     : null;
 
   return (
@@ -309,7 +309,7 @@ function Stat({
   return (
     <div>
       <div className="text-[9px] tracking-[0.1em] text-dim uppercase">{label}</div>
-      <div className={`text-[20px] font-semibold leading-tight mt-1.5 ${cls}`}>
+      <div className={`text-[18px] font-semibold leading-tight mt-1.5 ${cls}`}>
         {value}
       </div>
     </div>
