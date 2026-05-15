@@ -17,7 +17,10 @@ export async function GET() {
       send({ kind: "connected", ts: new Date().toISOString() });
       // Replay the last ~50 events so a fresh subscriber sees recent activity
       // (algorithm starts/stops, fills, exits) instead of an empty stream.
-      for (const ev of bus.recent()) {
+      // Guarded in case HMR holds a stale Bus instance without `recent`.
+      const recent =
+        typeof bus.recent === "function" ? bus.recent() : [];
+      for (const ev of recent) {
         send({ ...ev, replay: true });
       }
       const unsub = bus.subscribe(send);

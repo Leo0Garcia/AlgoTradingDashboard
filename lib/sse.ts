@@ -33,8 +33,11 @@ class Bus {
   }
 }
 
-const globalForBus = globalThis as unknown as { __sseBus?: Bus };
-export const bus: Bus = globalForBus.__sseBus ?? (globalForBus.__sseBus = new Bus());
+// Bumped from __sseBus → __sseBus_v2 when `recent()` was added so HMR doesn't
+// hand us a stale instance from before the buffer existed.
+const globalForBus = globalThis as unknown as { __sseBus_v2?: Bus };
+export const bus: Bus =
+  globalForBus.__sseBus_v2 ?? (globalForBus.__sseBus_v2 = new Bus());
 
 export function publishEvent(e: StreamEvent): void {
   bus.publish(e);
