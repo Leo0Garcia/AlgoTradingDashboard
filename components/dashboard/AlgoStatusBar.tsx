@@ -134,8 +134,6 @@ export function AlgoStatusBar() {
     (a) => a.status === "running" && a.last_session && !a.last_session.active,
   );
 
-  const cols = Math.min(algos.length, 4);
-
   return (
     <div className="flex flex-col gap-3.5">
       {pausedAlgos.length > 0 ? (
@@ -147,8 +145,8 @@ export function AlgoStatusBar() {
       ) : null}
 
       <div
-        className="grid gap-2.5"
-        style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+        className="grid gap-2.5 justify-start"
+        style={{ gridTemplateColumns: "repeat(4, 280px)" }}
       >
         {algos.map((a) => (
           <AlgoCard key={a.id} algo={a} onControl={control} />
