@@ -234,7 +234,7 @@ function AlgoCard({
 
   return (
     <div
-      className={`bg-bg-el border border-bg-el-2 border-t-2 ${accent} flex flex-col`}
+      className={`bg-bg-el border border-div border-t-2 ${accent} flex flex-col`}
     >
       {/* Header */}
       <div className="px-5 pt-5 pb-4 flex items-start gap-2.5">
@@ -270,7 +270,7 @@ function AlgoCard({
         </div>
       </div>
 
-      <div className="h-px bg-bg-el-2" />
+      <div className="h-px bg-div" />
 
       {/* Stats */}
       <div className="px-5 pt-5 pb-5 grid grid-cols-3 gap-2">
