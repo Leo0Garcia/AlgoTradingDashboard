@@ -9,6 +9,7 @@ const PAGES = [
   { href: "/", label: "LIVE" },
   { href: "/journal", label: "JOURNAL" },
   { href: "/analytics", label: "ANALYTICS" },
+  { href: "/backtest", label: "BACKTEST" },
   { href: "/algos", label: "ALGORITHMS" },
 ];
 
