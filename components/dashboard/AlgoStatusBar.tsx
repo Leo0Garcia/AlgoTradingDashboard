@@ -308,7 +308,7 @@ function Stat({
     tone === "green" ? "text-green" : tone === "red" ? "text-red" : "text-text";
   return (
     <div>
-      <div className="text-[9px] tracking-[0.1em] text-dim uppercase">{label}</div>
+      <div className="text-[13px] tracking-[0.08em] text-dim uppercase">{label}</div>
       <div className={`text-[20px] font-semibold leading-tight mt-2.5 ${cls}`}>
         {value}
       </div>
